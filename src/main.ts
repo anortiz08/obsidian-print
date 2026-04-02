@@ -6,6 +6,13 @@ import { generatePreviewContent } from './utils/generatePreviewContent';
 import { generatePrintStyles } from './utils/generatePrintStyles';
 import { getFolderByActiveFile } from './utils/getFolderByActiveFile';
 import { getNoteCssClasses } from './utils/getNoteCssClasses';
+import { generateViewContent } from './utils/generateViewContent';
+
+interface ActiveFileViewLike {
+    containerEl?: HTMLElement;
+    file?: TFile | null;
+    getViewType?: () => string;
+}
 
 export default class PrintPlugin extends Plugin {
     settings: PrintPluginSettings;
@@ -85,13 +92,26 @@ export default class PrintPlugin extends Plugin {
     }
 
     async printNote(file?: TFile) {
+        const initialActiveFile = this.app.workspace.getActiveFile();
+
         // if file is the active note, save it too
-        if (!file || file === this.app.workspace.getActiveFile()) {
+        if (!file || file === initialActiveFile) {
             file = await this.saveActiveFile() as TFile
         }
 
         if (!file) {
             new Notice('No note to print.');
+            return;
+        }
+
+        if (file.extension === 'base') {
+            const content = this.getPrintableBaseContent(file);
+            if (!content) {
+                return;
+            }
+
+            const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
+            await openPrintModal(file.basename, content, this.settings, cssString);
             return;
         }
 
@@ -210,5 +230,27 @@ export default class PrintPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
+    }
+
+    private getPrintableBaseContent(file: TFile): HTMLElement | void {
+        const activeView = this.getActiveFileView();
+
+        if (!activeView || activeView.file !== file) {
+            new Notice('Open the base first to print its rendered view.');
+            return;
+        }
+
+        const title = this.settings.printTitle ? file.basename : undefined;
+        return generateViewContent(activeView, title);
+    }
+
+    private getActiveFileView(): ActiveFileViewLike | null {
+        const activeFileView = this.app.workspace.getActiveFileView?.();
+        if (activeFileView) {
+            return activeFileView as ActiveFileViewLike;
+        }
+
+        const activeLeaf = (this.app.workspace as unknown as { activeLeaf?: { view?: ActiveFileViewLike } }).activeLeaf;
+        return activeLeaf?.view ?? null;
     }
 }

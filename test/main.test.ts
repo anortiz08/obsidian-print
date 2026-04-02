@@ -36,7 +36,8 @@ function createApp() {
         workspace: {
             on: vi.fn(() => ({})),
             getActiveFile: vi.fn(() => null),
-            getActiveViewOfType: vi.fn(() => null)
+            getActiveViewOfType: vi.fn(() => null),
+            getActiveFileView: vi.fn(() => null)
         },
         metadataCache: {
             getFileCache: vi.fn(() => undefined)
@@ -69,7 +70,7 @@ function createFile(path: string, basename: string, parent: TFolder) {
     return Object.assign(new TFile(), {
         path,
         basename,
-        extension: 'md',
+        extension: path.split('.').pop() ?? 'md',
         parent
     });
 }
@@ -213,5 +214,42 @@ describe('PrintPlugin cssclasses behavior', () => {
             plugin.settings,
             'body { color: black; }'
         );
+    });
+
+    it('prints the rendered base view instead of markdown source for active base files', async () => {
+        const app = createApp();
+        const folder = createFolder('Dashboards');
+        const file = createFile('Dashboards/books.base', 'books', folder);
+        const viewContainer = document.createElement('div');
+        const resultsEl = document.createElement('div');
+        resultsEl.className = 'bases-view';
+        resultsEl.textContent = 'Book list';
+        viewContainer.appendChild(resultsEl);
+
+        app.workspace.getActiveFile.mockReturnValue(file);
+        app.workspace.getActiveFileView.mockReturnValue({
+            file,
+            containerEl: viewContainer
+        });
+
+        const plugin = createPlugin(app);
+        plugin.settings = {
+            ...DEFAULT_SETTINGS,
+            printTitle: true
+        };
+
+        await plugin.printNote(file);
+
+        expect(mocks.generatePreviewContent).not.toHaveBeenCalled();
+        expect(mocks.openPrintModal).toHaveBeenCalledWith(
+            'books',
+            expect.any(HTMLDivElement),
+            plugin.settings,
+            'body { color: black; }'
+        );
+
+        const [, renderedContent] = mocks.openPrintModal.mock.calls[0];
+        expect((renderedContent as HTMLElement).textContent).toContain('books');
+        expect((renderedContent as HTMLElement).textContent).toContain('Book list');
     });
 });

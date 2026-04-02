@@ -22,7 +22,7 @@ export async function openPrintModal(
     cssString: string,
     bodyClasses: string[] = []
 ): Promise<void> {
-    const runtimeCss = getTargetedRuntimePrintCss();
+    const runtimeCss = getTargetedRuntimePrintCss(content);
     const combinedCssString = [cssString, runtimeCss]
         .filter((value) => value.trim().length > 0)
         .join('\n');

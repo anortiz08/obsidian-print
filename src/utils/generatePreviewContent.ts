@@ -1,4 +1,4 @@
-import { MarkdownRenderer, TFile, Component, Notice, App } from 'obsidian';
+import { MarkdownRenderer, TFile, Component, Notice, App, loadMermaid } from 'obsidian';
 
 /**
  * Returns the rendered markdown content from either a TFile or a string.
@@ -47,6 +47,8 @@ export async function generatePreviewContent(
             new Component()
         );
 
+        await renderMermaidBlocks(content);
+
         content.addClass('obsidian-print-note');
         return content;
 
@@ -54,6 +56,54 @@ export async function generatePreviewContent(
         new Notice('Failed to generate preview content.');
         console.error('Preview generation error:', error);
         return;
+    }
+}
+
+let mermaidRenderCount = 0;
+
+async function renderMermaidBlocks(content: HTMLElement): Promise<void> {
+    const mermaidCodeBlocks = content.querySelectorAll<HTMLElement>('pre code.language-mermaid');
+    if (mermaidCodeBlocks.length === 0) {
+        return;
+    }
+
+    try {
+        const mermaid = await loadMermaid();
+
+        for (const codeElement of Array.from(mermaidCodeBlocks)) {
+            const source = codeElement.textContent?.trim();
+            const preElement = codeElement.closest('pre');
+
+            if (!source || !preElement) {
+                continue;
+            }
+
+            const diagramContainer = document.createElement('div');
+            diagramContainer.className = 'mermaid';
+
+            const renderResult = await mermaid.render(
+                `obsidian-print-mermaid-${mermaidRenderCount++}`,
+                source
+            );
+
+            const svg = typeof renderResult === 'string'
+                ? renderResult
+                : renderResult?.svg;
+
+            if (!svg) {
+                continue;
+            }
+
+            diagramContainer.innerHTML = svg;
+
+            if (typeof renderResult?.bindFunctions === 'function') {
+                renderResult.bindFunctions(diagramContainer);
+            }
+
+            preElement.replaceWith(diagramContainer);
+        }
+    } catch (error) {
+        console.error('Mermaid rendering error:', error);
     }
 }
 

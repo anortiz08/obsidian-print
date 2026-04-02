@@ -47,4 +47,28 @@ describe('generatePreviewContent', () => {
         expect(content?.textContent).toContain('Body copy');
         expect(content?.textContent).not.toContain('position');
     });
+
+    it('renders mermaid code fences into diagrams', async () => {
+        const file = createFile();
+        const app = {
+            vault: {
+                cachedRead: async () => `
+\`\`\`mermaid
+flowchart TD
+    Start --> Finish
+\`\`\`
+`
+            },
+            metadataCache: {
+                getFileCache: () => undefined
+            }
+        };
+
+        const content = await generatePreviewContent(file, false, app as never, false);
+
+        expect(content?.querySelector('.mermaid')).toBeTruthy();
+        expect(content?.querySelector('svg[data-mermaid-id]')).toBeTruthy();
+        expect(content?.textContent).toContain('Start --> Finish');
+        expect(content?.querySelector('pre code.language-mermaid')).toBeFalsy();
+    });
 });

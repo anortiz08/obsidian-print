@@ -16,13 +16,19 @@ const TARGET_SELECTOR_PATTERNS = [
 
 const CSS_VARIABLE_PATTERN = /var\((--[\w-]+)/g;
 
-export function getTargetedRuntimePrintCss(): string {
+export function getTargetedRuntimePrintCss(rootElement?: ParentNode): string {
     const collectedRules: string[] = [];
     const seenRules = new Set<string>();
     const usedVariables = new Set<string>();
 
     Array.from(document.styleSheets).forEach((sheet) => {
-        collectStyleSheetRules(sheet, collectedRules, seenRules, usedVariables);
+        collectStyleSheetRules(
+            sheet,
+            collectedRules,
+            seenRules,
+            usedVariables,
+            rootElement
+        );
     });
 
     const variableCss = buildVariableCss(usedVariables);
@@ -87,7 +93,8 @@ function collectStyleSheetRules(
     sheet: StyleSheet,
     collectedRules: string[],
     seenRules: Set<string>,
-    usedVariables: Set<string>
+    usedVariables: Set<string>,
+    rootElement?: ParentNode
 ): void {
     const cssSheet = sheet as CSSStyleSheet;
     let rules: CSSRuleList;
@@ -98,19 +105,20 @@ function collectStyleSheetRules(
         return;
     }
 
-    collectRuleList(rules, collectedRules, seenRules, usedVariables);
+    collectRuleList(rules, collectedRules, seenRules, usedVariables, rootElement);
 }
 
 function collectRuleList(
     rules: CSSRuleList,
     collectedRules: string[],
     seenRules: Set<string>,
-    usedVariables: Set<string>
+    usedVariables: Set<string>,
+    rootElement?: ParentNode
 ): void {
     Array.from(rules).forEach((rule) => {
         if (rule.type === CSSRule.STYLE_RULE) {
             const styleRule = rule as CSSStyleRule;
-            if (!matchesTargetSelector(styleRule.selectorText)) {
+            if (!matchesTargetSelector(styleRule.selectorText, rootElement)) {
                 return;
             }
 
@@ -123,7 +131,7 @@ function collectRuleList(
             const mediaRule = rule as CSSMediaRule;
             const nestedRules: string[] = [];
 
-            collectRuleList(mediaRule.cssRules, nestedRules, seenRules, usedVariables);
+            collectRuleList(mediaRule.cssRules, nestedRules, seenRules, usedVariables, rootElement);
 
             if (nestedRules.length > 0) {
                 addRuleText(
@@ -138,14 +146,53 @@ function collectRuleList(
         if (rule.type === CSSRule.IMPORT_RULE) {
             const importRule = rule as CSSImportRule;
             if (importRule.styleSheet) {
-                collectStyleSheetRules(importRule.styleSheet, collectedRules, seenRules, usedVariables);
+                collectStyleSheetRules(
+                    importRule.styleSheet,
+                    collectedRules,
+                    seenRules,
+                    usedVariables,
+                    rootElement
+                );
             }
         }
     });
 }
 
-function matchesTargetSelector(selectorText: string): boolean {
-    return TARGET_SELECTOR_PATTERNS.some((pattern) => pattern.test(selectorText));
+function matchesTargetSelector(selectorText: string, rootElement?: ParentNode): boolean {
+    return TARGET_SELECTOR_PATTERNS.some((pattern) => pattern.test(selectorText))
+        || selectorMatchesContent(selectorText, rootElement);
+}
+
+function selectorMatchesContent(selectorText: string, rootElement?: ParentNode): boolean {
+    if (!rootElement) {
+        return false;
+    }
+
+    if (querySelectorAgainstRoot(selectorText, rootElement)) {
+        return true;
+    }
+
+    const normalizedSelector = selectorText.replace(/::[\w-]+/g, '');
+
+    if (normalizedSelector !== selectorText) {
+        return querySelectorAgainstRoot(normalizedSelector, rootElement);
+    }
+
+    return false;
+}
+
+function querySelectorAgainstRoot(selectorText: string, rootElement: ParentNode): boolean {
+    try {
+        const elementRoot = rootElement as Element;
+
+        if ('matches' in elementRoot && typeof elementRoot.matches === 'function' && elementRoot.matches(selectorText)) {
+            return true;
+        }
+
+        return Boolean(rootElement.querySelector(selectorText));
+    } catch (error) {
+        return false;
+    }
 }
 
 function collectVariables(cssText: string, usedVariables: Set<string>): void {

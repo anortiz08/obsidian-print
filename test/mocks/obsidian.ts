@@ -78,11 +78,39 @@ export const MarkdownRenderer = {
         markdown: string,
         container: HTMLElement
     ): Promise<void> {
+        const mermaidBlocks = markdown.match(/```mermaid\s*([\s\S]*?)```/g);
+
+        if (mermaidBlocks?.length) {
+            mermaidBlocks.forEach((block) => {
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.className = 'language-mermaid';
+                code.textContent = block
+                    .replace(/^```mermaid\s*/, '')
+                    .replace(/```$/, '')
+                    .trim();
+                pre.appendChild(code);
+                container.appendChild(pre);
+            });
+
+            return;
+        }
+
         const paragraph = document.createElement('p');
         paragraph.textContent = markdown;
         container.appendChild(paragraph);
     }
 };
+
+export async function loadMermaid(): Promise<{
+    render: (id: string, source: string) => Promise<{ svg: string }>;
+}> {
+    return {
+        render: async (id: string, source: string) => ({
+            svg: `<svg data-mermaid-id="${id}"><text>${source}</text></svg>`
+        })
+    };
+}
 
 export class PluginSettingTab {
     app: unknown;
