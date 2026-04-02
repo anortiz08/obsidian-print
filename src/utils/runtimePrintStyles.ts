@@ -1,8 +1,15 @@
 const TARGET_SELECTOR_PATTERNS = [
     /mjx-/i,
     /mathjax/i,
+    /mermaid/i,
     /(^|[^a-z-])pre([^a-z-]|$)/i,
     /(^|[^a-z-])code([^a-z-]|$)/i,
+    /(^|[^a-z-])callout([^a-z-]|$)/i,
+    /data-callout/i,
+    /callout-title/i,
+    /callout-content/i,
+    /callout-icon/i,
+    /callout-fold/i,
     /\.token\b/i,
     /language-/i
 ];
