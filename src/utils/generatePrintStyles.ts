@@ -36,7 +36,7 @@ export async function generatePrintStyles(app: App, manifest: PluginManifest, se
 
     const frontmatterStyles = settings.printFrontmatter
         ? `
-        .metadata-container {
+        .obsidian-print-frontmatter {
             display: block !important;
             margin: 0 0 1.5rem;
             padding: 0.9rem 1rem;
@@ -45,22 +45,44 @@ export async function generatePrintStyles(app: App, manifest: PluginManifest, se
             background: var(--background-secondary, rgba(0, 0, 0, 0.03));
             page-break-inside: avoid;
         }
-        .metadata-properties {
+        .obsidian-print-frontmatter-properties {
             display: grid;
             gap: 0.45rem;
         }
-        .metadata-property {
+        .obsidian-print-frontmatter-property {
             display: grid;
             grid-template-columns: minmax(120px, 220px) 1fr;
             gap: 0.75rem;
             align-items: start;
         }
-        .metadata-property-key {
+        .obsidian-print-frontmatter-key {
             font-weight: 600;
         }
-        .metadata-property-value,
-        .metadata-property-value .markdown-rendered,
-        .metadata-property-value > * {
+        .obsidian-print-frontmatter-value > *:first-child,
+        .obsidian-print-frontmatter-value > *:last-child {
+            margin-block-start: 0;
+            margin-block-end: 0;
+        }
+        .obsidian-print-frontmatter-list,
+        .obsidian-print-frontmatter-object {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+        .obsidian-print-frontmatter-object {
+            display: grid;
+            gap: 0.35rem;
+            padding-left: 0;
+        }
+        .obsidian-print-frontmatter-object-row {
+            display: grid;
+            grid-template-columns: minmax(90px, 180px) 1fr;
+            gap: 0.75rem;
+        }
+        .obsidian-print-frontmatter-object-key {
+            font-weight: 500;
+        }
+        .obsidian-print-frontmatter-object-key,
+        .obsidian-print-frontmatter-object-value {
             margin: 0;
         }
         `
@@ -75,8 +97,8 @@ export async function generatePrintStyles(app: App, manifest: PluginManifest, se
         h5 { font-size: ${settings.h5Size}; }
         h6 { font-size: ${settings.h6Size}; }
         hr { page-break-before: ${settings.hrPageBreaks ? 'always' : 'auto'}; border-width: ${settings.hrPageBreaks ? '0' : 'revert-layer'}; }
-        ${frontmatterStyles}
         ${pluginStyle}
+        ${frontmatterStyles}
         ${userStyle}
     `;
 }

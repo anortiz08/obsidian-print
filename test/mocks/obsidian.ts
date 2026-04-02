@@ -70,6 +70,20 @@ export class MarkdownView {
     async save(): Promise<void> {}
 }
 
+export class Component {}
+
+export const MarkdownRenderer = {
+    async render(
+        _app: unknown,
+        markdown: string,
+        container: HTMLElement
+    ): Promise<void> {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = markdown;
+        container.appendChild(paragraph);
+    }
+};
+
 export class PluginSettingTab {
     app: unknown;
     plugin: unknown;

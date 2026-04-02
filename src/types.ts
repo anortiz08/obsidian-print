@@ -11,7 +11,6 @@ export interface PrintPluginSettings {
     combineFolderNotes: boolean;
     hrPageBreaks: boolean;
     debugMode: boolean;
-    usePreview: boolean;
     inheritNoteCssClasses: boolean;
 }
 
@@ -28,6 +27,5 @@ export const DEFAULT_SETTINGS: PrintPluginSettings = {
     combineFolderNotes: false,
     hrPageBreaks: false,
     debugMode: false,
-    usePreview: true,
     inheritNoteCssClasses: false
 };

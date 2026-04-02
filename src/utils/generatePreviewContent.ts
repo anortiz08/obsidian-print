@@ -74,40 +74,93 @@ function appendFrontmatter(content: HTMLElement, file: TFile, app: App): void {
         return;
     }
 
-    const metadataContainer = content.createDiv({ cls: 'metadata-container' });
-    const metadataProperties = metadataContainer.createDiv({ cls: 'metadata-properties' });
+    const metadataContainer = document.createElement('section');
+    metadataContainer.className = 'obsidian-print-frontmatter';
+
+    const metadataProperties = document.createElement('div');
+    metadataProperties.className = 'obsidian-print-frontmatter-properties';
+    metadataContainer.appendChild(metadataProperties);
 
     entries.forEach(([key, value]) => {
-        const propertyElement = metadataProperties.createDiv({ cls: 'metadata-property' });
-        propertyElement.createDiv({
-            cls: 'metadata-property-key',
-            text: key
-        });
-        propertyElement.createDiv({
-            cls: 'metadata-property-value',
-            text: stringifyFrontmatterValue(value)
-        });
+        const propertyElement = document.createElement('div');
+        propertyElement.className = 'obsidian-print-frontmatter-property';
+
+        const keyElement = document.createElement('div');
+        keyElement.className = 'obsidian-print-frontmatter-key';
+        keyElement.textContent = key;
+
+        const valueElement = document.createElement('div');
+        valueElement.className = 'obsidian-print-frontmatter-value';
+        appendFrontmatterValue(valueElement, value);
+
+        propertyElement.append(keyElement, valueElement);
+        metadataProperties.appendChild(propertyElement);
     });
+
+    content.appendChild(metadataContainer);
 }
 
-function stringifyFrontmatterValue(value: unknown): string {
-    if (typeof value === 'string') {
-        return value;
-    }
-
-    if (typeof value === 'number' || typeof value === 'boolean') {
-        return String(value);
+function appendFrontmatterValue(container: HTMLElement, value: unknown): void {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        container.textContent = String(value);
+        return;
     }
 
     if (Array.isArray(value)) {
-        return value.map((entry) => stringifyFrontmatterValue(entry)).join(', ');
+        if (value.length === 0) {
+            return;
+        }
+
+        if (value.length === 1) {
+            appendFrontmatterValue(container, value[0]);
+            return;
+        }
+
+        const listElement = document.createElement('ul');
+        listElement.className = 'obsidian-print-frontmatter-list';
+
+        value.forEach((entry) => {
+            const listItem = document.createElement('li');
+            appendFrontmatterValue(listItem, entry);
+            listElement.appendChild(listItem);
+        });
+
+        container.appendChild(listElement);
+        return;
     }
 
     if (value && typeof value === 'object') {
-        return Object.entries(value as Record<string, unknown>)
-            .map(([key, entry]) => `${key}: ${stringifyFrontmatterValue(entry)}`)
-            .join(', ');
+        const entries = Object.entries(value as Record<string, unknown>)
+            .filter(([, entry]) => entry !== null && entry !== undefined);
+
+        if (entries.length === 0) {
+            return;
+        }
+
+        const objectElement = document.createElement('dl');
+        objectElement.className = 'obsidian-print-frontmatter-object';
+
+        entries.forEach(([key, entry]) => {
+            const rowElement = document.createElement('div');
+            rowElement.className = 'obsidian-print-frontmatter-object-row';
+
+            const keyElement = document.createElement('dt');
+            keyElement.className = 'obsidian-print-frontmatter-object-key';
+            keyElement.textContent = key;
+
+            const valueElement = document.createElement('dd');
+            valueElement.className = 'obsidian-print-frontmatter-object-value';
+            appendFrontmatterValue(valueElement, entry);
+
+            rowElement.append(keyElement, valueElement);
+            objectElement.appendChild(rowElement);
+        });
+
+        container.appendChild(objectElement);
+        return;
     }
 
-    return '';
+    if (value !== null && value !== undefined) {
+        container.textContent = String(value);
+    }
 }
