@@ -5,17 +5,21 @@ on:
     tags:
       - "*"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
-          node-version: "18.x"
+          node-version: "24"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -23,13 +27,34 @@ jobs:
       - name: Build plugin
         run: npm run build
 
-      - name: Create release
+      - name: Extract release notes from changelog
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+
+          awk -v tag="$tag" '
+            $0 ~ "^## " tag "([[:space:]]-|$)" { capture = 1; next }
+            capture && /^## / { exit }
+            capture { print }
+          ' CHANGELOG.md > release-notes.md
+
+          if [ ! -s release-notes.md ]; then
+            echo "Could not find a CHANGELOG entry for $tag" >&2
+            exit 1
+          fi
+
+      - name: Create or update release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
 
-          gh release create "$tag" \
-            --title="$tag" \
-            --notes-file=RELEASE.md \
-            main.js manifest.json styles.css
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" \
+              --title="$tag" \
+              --notes-file=release-notes.md
+          else
+            gh release create "$tag" \
+              --title="$tag" \
+              --notes-file=release-notes.md \
+              main.js manifest.json styles.css
+          fi

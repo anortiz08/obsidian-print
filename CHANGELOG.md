@@ -8,6 +8,7 @@
 - Added support for rendering Mermaid diagrams in the print document instead of printing raw fenced code.
 - Added basic print styling for Obsidian callouts and improved theme/runtime style carry-over for callouts, Mermaid, code blocks, and MathJax.
 - Improved printed rendering for code blocks, syntax highlighting, tables, nested task lists, and indented checklists.
+- Fixed folder print ordering so folder notes stay first and quoted note titles sort more like the Obsidian vault view.
 - Fixed a blank-PDF regression by scoping runtime CSS capture to the actual printed content.
 - Removed the unused preview-only print path and expanded Vitest coverage for the new print behavior.
 
