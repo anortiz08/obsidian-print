@@ -29,6 +29,7 @@ export class Notice {
 
     constructor(message: string) {
         this.message = message;
+        getMockNoticeStore().push(message);
     }
 }
 
@@ -164,4 +165,23 @@ export class Setting {
     setDisabled(): this {
         return this;
     }
+}
+
+export const Platform = {
+    isDesktop: true,
+    isMobile: false,
+    isDesktopApp: true,
+    isMobileApp: false
+};
+
+function getMockNoticeStore(): string[] {
+    const globalWithNoticeStore = globalThis as typeof globalThis & {
+        __obsidianMockNotices?: string[];
+    };
+
+    if (!globalWithNoticeStore.__obsidianMockNotices) {
+        globalWithNoticeStore.__obsidianMockNotices = [];
+    }
+
+    return globalWithNoticeStore.__obsidianMockNotices;
 }

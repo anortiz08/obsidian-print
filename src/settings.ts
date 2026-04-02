@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Platform, PluginSettingTab, Setting } from 'obsidian';
 import PrintPlugin from './main';
 import { getPrintSnippet, isPrintSnippetEnabled, setPrintSnippetEnabled } from './utils/generatePrintStyles';
 import { PrintPluginSettings } from './types';
@@ -100,8 +100,10 @@ export class PrintSettingTab extends PluginSettingTab {
 
         this.addToggleSetting(
             containerEl,
-            'Debug mode',
-            'Enable debug mode. This will open the print window for inspection.',
+            Platform.isMobileApp ? 'Debug mode (Desktop only)' : 'Debug mode',
+            Platform.isMobileApp
+                ? 'This inspection window is only available in Obsidian desktop. On mobile, printing continues without opening a debug preview.'
+                : 'Enable debug mode. This will open the print window for inspection.',
             'debugMode'
         );
     }
