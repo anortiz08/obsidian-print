@@ -26,6 +26,16 @@ export class PrintSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName('Print frontmatter')
+            .setDesc('Include the note properties/frontmatter block at the top of the printout.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.printFrontmatter)
+                .onChange(async (value) => {
+                    this.plugin.settings.printFrontmatter = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
             .setName('Font size')
             .setDesc('Set the font size for the printed note.')
             .addText(text => text
@@ -80,6 +90,16 @@ export class PrintSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.debugMode)
                 .onChange(async (value) => {
                     this.plugin.settings.debugMode = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Inherit note `cssclasses`')
+            .setDesc('Apply Obsidian note `cssclasses` from frontmatter/properties to the printed output. For folder printing, each note keeps its own classes.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.inheritNoteCssClasses)
+                .onChange(async (value) => {
+                    this.plugin.settings.inheritNoteCssClasses = value;
                     await this.plugin.saveSettings();
                 }));
 

@@ -5,13 +5,22 @@ import { openPrintModal } from './utils/printModal';
 import { generatePreviewContent } from './utils/generatePreviewContent';
 import { generatePrintStyles } from './utils/generatePrintStyles';
 import { getFolderByActiveFile } from './utils/getFolderByActiveFile';
+import { getNoteCssClasses } from './utils/getNoteCssClasses';
 
 export default class PrintPlugin extends Plugin {
     settings: PrintPluginSettings;
 
     async onload() {
         console.log('Print plugin loaded');
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const loadedSettings = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
+
+        if (
+            loadedSettings?.inheritNoteCssClasses === undefined &&
+            typeof loadedSettings?.extraClasses === 'boolean'
+        ) {
+            this.settings.inheritNoteCssClasses = loadedSettings.extraClasses;
+        }
 
         this.addCommand({
             id: 'print-note',
@@ -86,13 +95,24 @@ export default class PrintPlugin extends Plugin {
             return;
         }
 
-        const content = await generatePreviewContent(file, this.settings.printTitle, this.app);
+        const noteCssClasses = this.settings.inheritNoteCssClasses
+            ? getNoteCssClasses(this.app, file)
+            : [];
+
+        const content = await generatePreviewContent(
+            file,
+            this.settings.printTitle,
+            this.app,
+            this.settings.printFrontmatter
+        );
         if (!content) {
             return;
         }
 
+        content.classList.add(...noteCssClasses);
+
         const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
-        await openPrintModal(content, this.settings, cssString);
+        await openPrintModal(file.basename, content, this.settings, cssString, noteCssClasses);
     }
 
     async printSelection() {
@@ -107,14 +127,23 @@ export default class PrintPlugin extends Plugin {
             new Notice('No text selected.');
             return;
         }
+
+        const noteCssClasses = this.settings.inheritNoteCssClasses
+            ? getNoteCssClasses(this.app, activeView.file)
+            : [];
     
-        const content = await generatePreviewContent(selection, false, this.app);
+        const content = await generatePreviewContent(selection, false, this.app, false);
         if (!content) {
             return;
         }
+
+        content.classList.add(...noteCssClasses);
     
         const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
-        await openPrintModal(content, this.settings, cssString);
+        const printTitle = activeView.file?.basename
+            ? `${activeView.file.basename} snippet`
+            : 'Selection';
+        await openPrintModal(printTitle, content, this.settings, cssString, noteCssClasses);
     }
 
     async printFolder(folder?: TFolder) {
@@ -140,10 +169,19 @@ export default class PrintPlugin extends Plugin {
         const folderContent = createDiv();
 
         for (const file of files) {
-            const content = await generatePreviewContent(file, this.settings.printTitle, this.app);
+            const content = await generatePreviewContent(
+                file,
+                this.settings.printTitle,
+                this.app,
+                this.settings.printFrontmatter
+            );
 
             if (!content) {
                 continue;
+            }
+
+            if (this.settings.inheritNoteCssClasses) {
+                content.classList.add(...getNoteCssClasses(this.app, file));
             }
 
             if (!this.settings.combineFolderNotes) {
@@ -154,8 +192,7 @@ export default class PrintPlugin extends Plugin {
         }
 
         const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
-
-        await openPrintModal(folderContent, this.settings, cssString);
+        await openPrintModal(activeFolder.name, folderContent, this.settings, cssString);
     }
 
     /**

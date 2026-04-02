@@ -34,6 +34,38 @@ export async function generatePrintStyles(app: App, manifest: PluginManifest, se
         userStyle = getPrintSnippetValue(app) ?? '';        
     }
 
+    const frontmatterStyles = settings.printFrontmatter
+        ? `
+        .metadata-container {
+            display: block !important;
+            margin: 0 0 1.5rem;
+            padding: 0.9rem 1rem;
+            border: 1px solid var(--background-modifier-border, rgba(0, 0, 0, 0.12));
+            border-radius: 8px;
+            background: var(--background-secondary, rgba(0, 0, 0, 0.03));
+            page-break-inside: avoid;
+        }
+        .metadata-properties {
+            display: grid;
+            gap: 0.45rem;
+        }
+        .metadata-property {
+            display: grid;
+            grid-template-columns: minmax(120px, 220px) 1fr;
+            gap: 0.75rem;
+            align-items: start;
+        }
+        .metadata-property-key {
+            font-weight: 600;
+        }
+        .metadata-property-value,
+        .metadata-property-value .markdown-rendered,
+        .metadata-property-value > * {
+            margin: 0;
+        }
+        `
+        : '';
+
     return `
         body { font-size: ${settings.fontSize}; }
         h1 { font-size: ${settings.h1Size}; }
@@ -43,6 +75,7 @@ export async function generatePrintStyles(app: App, manifest: PluginManifest, se
         h5 { font-size: ${settings.h5Size}; }
         h6 { font-size: ${settings.h6Size}; }
         hr { page-break-before: ${settings.hrPageBreaks ? 'always' : 'auto'}; border-width: ${settings.hrPageBreaks ? '0' : 'revert-layer'}; }
+        ${frontmatterStyles}
         ${pluginStyle}
         ${userStyle}
     `;

@@ -11,11 +11,16 @@ import { MarkdownRenderer, TFile, Component, Notice, App } from 'obsidian';
 export async function generatePreviewContent(
     input: TFile | string,
     withTitle: boolean,
-    app: App
+    app: App,
+    includeFrontmatter = false
 ): Promise<HTMLElement|void> {
     const content = createDiv();
 
     try {
+        if (includeFrontmatter && input instanceof TFile) {
+            appendFrontmatter(content, input, app);
+        }
+
         // Handle title if requested
         if (withTitle && input instanceof TFile) {
             const titleEl = content.createEl('h1');
@@ -50,4 +55,59 @@ export async function generatePreviewContent(
         console.error('Preview generation error:', error);
         return;
     }
+}
+
+function appendFrontmatter(content: HTMLElement, file: TFile, app: App): void {
+    const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter as
+        | Record<string, unknown>
+        | undefined;
+
+    if (!frontmatter) {
+        return;
+    }
+
+    const entries = Object.entries(frontmatter)
+        .filter(([key]) => key !== 'position')
+        .filter(([, value]) => value !== null && value !== undefined);
+
+    if (entries.length === 0) {
+        return;
+    }
+
+    const metadataContainer = content.createDiv({ cls: 'metadata-container' });
+    const metadataProperties = metadataContainer.createDiv({ cls: 'metadata-properties' });
+
+    entries.forEach(([key, value]) => {
+        const propertyElement = metadataProperties.createDiv({ cls: 'metadata-property' });
+        propertyElement.createDiv({
+            cls: 'metadata-property-key',
+            text: key
+        });
+        propertyElement.createDiv({
+            cls: 'metadata-property-value',
+            text: stringifyFrontmatterValue(value)
+        });
+    });
+}
+
+function stringifyFrontmatterValue(value: unknown): string {
+    if (typeof value === 'string') {
+        return value;
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+
+    if (Array.isArray(value)) {
+        return value.map((entry) => stringifyFrontmatterValue(entry)).join(', ');
+    }
+
+    if (value && typeof value === 'object') {
+        return Object.entries(value as Record<string, unknown>)
+            .map(([key, entry]) => `${key}: ${stringifyFrontmatterValue(entry)}`)
+            .join(', ');
+    }
+
+    return '';
 }

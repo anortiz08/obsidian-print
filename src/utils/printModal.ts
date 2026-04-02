@@ -1,43 +1,51 @@
 import { PrintPluginSettings } from '../types';
-import { Printd } from 'printd'
+import { Printd } from 'printd';
+import {
+    applyRuntimePrintClasses,
+    createDebugPrintHtml,
+    getTargetedRuntimePrintCss
+} from './runtimePrintStyles';
 
 /**
  * Generate the HTML with the content to be printed. Use Printd to print.
  * 
+ * @param title
  * @param content 
  * @param settings 
  * @param cssString 
  * @returns 
  */
-export async function openPrintModal(content: HTMLElement, settings: PrintPluginSettings, cssString: string): Promise<void> {
-    const htmlElement = document.createElement('html');
-    const headElement = document.createElement('head');
+export async function openPrintModal(
+    title: string,
+    content: HTMLElement,
+    settings: PrintPluginSettings,
+    cssString: string,
+    bodyClasses: string[] = []
+): Promise<void> {
+    const runtimeCss = getTargetedRuntimePrintCss();
+    const combinedCssString = [cssString, runtimeCss]
+        .filter((value) => value.trim().length > 0)
+        .join('\n');
+    const previousTitle = document.title;
+    let restoredTitle = false;
 
-    const titleElement = document.createElement('title');
-    titleElement.textContent = 'Print note';
-    headElement.appendChild(titleElement);
+    const restoreDocumentTitle = () => {
+        if (restoredTitle) {
+            return;
+        }
 
-    if (settings.debugMode) {
-        const styleElement = document.createElement('style');
-        styleElement.textContent = cssString;
-        headElement.appendChild(styleElement);
-    }
-
-    htmlElement.appendChild(headElement);
-
-    const bodyElement = document.createElement('body');
-    bodyElement.className = 'obsidian-print';
-    bodyElement.appendChild(content);
-
-    htmlElement.appendChild(bodyElement);
+        restoredTitle = true;
+        document.title = previousTitle;
+    };
 
     /**
      * This uses Electron to open a window with HTML content in order to inspect it when debug mode is turned on.
      */
     if (settings.debugMode) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { remote } = (window as any).require("electron");
 
-        let printWindow = new remote.BrowserWindow({
+        const printWindow = new remote.BrowserWindow({
             width: 800,
             height: 600,
             show: true,
@@ -51,7 +59,7 @@ export async function openPrintModal(content: HTMLElement, settings: PrintPlugin
          * This uses outerHTML solely when debug mode is turned on to make it easier to inspect the generated HTML
          * and CSS stylying. For debuggers: Press `cmd/ctrl + p` in the DevTools and search for 'Emulate CSS Print media type'
          */
-        const debugContent = htmlElement.outerHTML;
+        const debugContent = createDebugPrintHtml(content, combinedCssString, title, bodyClasses);
         printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(debugContent)}`);
 
         printWindow.webContents.on('did-finish-load', () => {
@@ -59,6 +67,29 @@ export async function openPrintModal(content: HTMLElement, settings: PrintPlugin
         });
     }
 
-    const d = new Printd()
-    d.print(htmlElement, [cssString])
+    const d = new Printd();
+    d.onBeforePrint(() => {
+        document.title = title;
+    });
+    d.onAfterPrint(() => {
+        restoreDocumentTitle();
+    });
+
+    d.print(content, [combinedCssString], undefined, ({ iframe, launchPrint }) => {
+        if (iframe.contentDocument) {
+            applyRuntimePrintClasses(iframe.contentDocument);
+            iframe.contentDocument.title = title;
+
+            if (bodyClasses.length > 0) {
+                iframe.contentDocument.body.classList.add(...bodyClasses);
+            }
+        }
+
+        document.title = title;
+        launchPrint();
+
+        window.setTimeout(() => {
+            restoreDocumentTitle();
+        }, 1000);
+    });
 }

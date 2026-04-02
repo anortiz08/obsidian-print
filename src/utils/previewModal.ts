@@ -1,6 +1,10 @@
 import { Modal, App, ButtonComponent } from 'obsidian';
 import { PrintPluginSettings } from '../types';
 import { Printd } from 'printd';
+import {
+    applyRuntimePrintClasses,
+    getTargetedRuntimePrintCss
+} from './runtimePrintStyles';
 
 export class PrintPreviewModal extends Modal {
     private content: HTMLElement;
@@ -21,6 +25,9 @@ export class PrintPreviewModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
+        const combinedCssString = [this.cssString, getTargetedRuntimePrintCss()]
+            .filter((value) => value.trim().length > 0)
+            .join('\n');
         
         // Add title
         contentEl.createEl('h2', { text: 'Print Preview' });
@@ -31,43 +38,23 @@ export class PrintPreviewModal extends Modal {
         
         // Apply print styles to preview
         const styleEl = contentEl.createEl('style');
-        styleEl.textContent = this.cssString;
+        styleEl.textContent = combinedCssString;
         
         // Add print button
         const buttonContainer = contentEl.createDiv('print-button-container');
         new ButtonComponent(buttonContainer)
             .setButtonText('Print')
             .onClick(() => {
-                const htmlElement = this.generatePrintHtml();
                 const d = new Printd();
-                d.print(htmlElement, [this.cssString]);
+                d.print(this.content, [combinedCssString], undefined, ({ iframe, launchPrint }) => {
+                    if (iframe.contentDocument) {
+                        applyRuntimePrintClasses(iframe.contentDocument);
+                    }
+
+                    launchPrint();
+                });
                 this.close();
             });
-    }
-
-    private generatePrintHtml(): HTMLElement {
-        const htmlElement = document.createElement('html');
-        const headElement = document.createElement('head');
-
-        const titleElement = document.createElement('title');
-        titleElement.textContent = 'Print note';
-        headElement.appendChild(titleElement);
-
-        if (this.settings.debugMode) {
-            const styleElement = document.createElement('style');
-            styleElement.textContent = this.cssString;
-            headElement.appendChild(styleElement);
-        }
-
-        htmlElement.appendChild(headElement);
-
-        const bodyElement = document.createElement('body');
-        bodyElement.className = 'obsidian-print';
-        bodyElement.appendChild(this.content.cloneNode(true));
-
-        htmlElement.appendChild(bodyElement);
-
-        return htmlElement;
     }
 
     onClose() {

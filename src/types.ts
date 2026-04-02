@@ -1,5 +1,6 @@
 export interface PrintPluginSettings {
     printTitle: boolean;
+    printFrontmatter: boolean;
     fontSize: string;
     h1Size: string;
     h2Size: string;
@@ -11,10 +12,12 @@ export interface PrintPluginSettings {
     hrPageBreaks: boolean;
     debugMode: boolean;
     usePreview: boolean;
+    inheritNoteCssClasses: boolean;
 }
 
 export const DEFAULT_SETTINGS: PrintPluginSettings = {
     printTitle: true,
+    printFrontmatter: false,
     fontSize: '14px',
     h1Size: '20px',
     h2Size: '18px',
@@ -25,5 +28,6 @@ export const DEFAULT_SETTINGS: PrintPluginSettings = {
     combineFolderNotes: false,
     hrPageBreaks: false,
     debugMode: false,
-    usePreview: true
+    usePreview: true,
+    inheritNoteCssClasses: false
 };
