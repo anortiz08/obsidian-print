@@ -7,6 +7,7 @@ import { generatePrintStyles } from './utils/generatePrintStyles';
 import { getFolderByActiveFile } from './utils/getFolderByActiveFile';
 import { getNoteCssClasses } from './utils/getNoteCssClasses';
 import { generateViewContent } from './utils/generateViewContent';
+import { createFrontmatterContent } from './utils/frontmatterContent';
 
 const folderPrintOrderCollator = new Intl.Collator(undefined, {
     numeric: true,
@@ -18,6 +19,19 @@ interface ActiveFileViewLike {
     containerEl?: HTMLElement;
     file?: TFile | null;
     getViewType?: () => string;
+}
+
+interface ActiveMarkdownViewLike extends ActiveFileViewLike {
+    getMode?: () => 'source' | 'preview';
+    previewMode?: {
+        containerEl?: HTMLElement;
+        rerender?: (full?: boolean) => void;
+    };
+}
+
+interface ResolvedPrintContent {
+    content: HTMLElement;
+    bodyClasses?: string[];
 }
 
 export default class PrintPlugin extends Plugin {
@@ -98,84 +112,33 @@ export default class PrintPlugin extends Plugin {
     }
 
     async printNote(file?: TFile) {
-        const initialActiveFile = this.app.workspace.getActiveFile();
+        const resolvedFile = await this.resolveRequestedFile(file);
 
-        // if file is the active note, save it too
-        if (!file || file === initialActiveFile) {
-            file = await this.saveActiveFile() as TFile
-        }
-
-        if (!file) {
+        if (!resolvedFile) {
             new Notice('No note to print.');
             return;
         }
 
-        if (file.extension === 'base') {
-            const content = this.getPrintableBaseContent(file);
-            if (!content) {
-                return;
-            }
-
-            const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
-            await openPrintModal(file.basename, content, this.settings, cssString);
+        const printableContent = await this.resolvePrintableFileContent(resolvedFile);
+        if (!printableContent) {
             return;
         }
 
-        const noteCssClasses = this.settings.inheritNoteCssClasses
-            ? getNoteCssClasses(this.app, file)
-            : [];
-
-        const content = await generatePreviewContent(
-            file,
-            this.settings.printTitle,
-            this.app,
-            this.settings.printFrontmatter
-        );
-        if (!content) {
-            return;
-        }
-
-        content.classList.add(...noteCssClasses);
-
-        const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
-        await openPrintModal(file.basename, content, this.settings, cssString, noteCssClasses);
+        await this.openPrintableContent(resolvedFile.basename, printableContent);
     }
 
     async printSelection() {
-        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-        if (!activeView) {
-            new Notice('No active note.');
-            return;
-        }
-    
-        const selection = activeView.editor.getSelection();
-        if (!selection) {
-            new Notice('No text selected.');
+        const printableSelection = await this.resolvePrintableSelection();
+        if (!printableSelection) {
             return;
         }
 
-        const noteCssClasses = this.settings.inheritNoteCssClasses
-            ? getNoteCssClasses(this.app, activeView.file)
-            : [];
-    
-        const content = await generatePreviewContent(selection, false, this.app, false);
-        if (!content) {
-            return;
-        }
-
-        content.classList.add(...noteCssClasses);
-    
-        const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
-        const printTitle = activeView.file?.basename
-            ? `${activeView.file.basename} snippet`
-            : 'Selection';
-        await openPrintModal(printTitle, content, this.settings, cssString, noteCssClasses);
+        await this.openPrintableContent(printableSelection.title, printableSelection);
     }
 
     async printFolder(folder?: TFolder) {
-
         if (!folder) {
-            await this.saveActiveFile()
+            await this.saveActiveFile();
         }
 
         const activeFolder = folder || await getFolderByActiveFile(this.app);
@@ -192,33 +155,8 @@ export default class PrintPlugin extends Plugin {
             return;
         }
 
-        const folderContent = createDiv();
-
-        for (const file of files) {
-            const content = await generatePreviewContent(
-                file,
-                this.settings.printTitle,
-                this.app,
-                this.settings.printFrontmatter
-            );
-
-            if (!content) {
-                continue;
-            }
-
-            if (this.settings.inheritNoteCssClasses) {
-                content.classList.add(...getNoteCssClasses(this.app, file));
-            }
-
-            if (!this.settings.combineFolderNotes) {
-                content.addClass('obsidian-print-page-break');
-            }
-
-            folderContent.append(content);
-        }
-
-        const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
-        await openPrintModal(activeFolder.name, folderContent, this.settings, cssString);
+        const folderContent = await this.buildFolderPrintContent(files);
+        await this.openPrintableContent(activeFolder.name, { content: folderContent });
     }
 
     /**
@@ -238,6 +176,127 @@ export default class PrintPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
+    private async resolveRequestedFile(file?: TFile): Promise<TFile | null> {
+        const activeFile = this.app.workspace.getActiveFile();
+
+        if (!file || file === activeFile) {
+            return await this.saveActiveFile();
+        }
+
+        return file;
+    }
+
+    private async resolvePrintableFileContent(file: TFile): Promise<ResolvedPrintContent | void> {
+        if (file.extension === 'base') {
+            const content = this.getPrintableBaseContent(file);
+            return content ? { content } : undefined;
+        }
+
+        return await this.resolvePrintableMarkdownFileContent(file);
+    }
+
+    private async resolvePrintableSelection(): Promise<(ResolvedPrintContent & { title: string }) | void> {
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!activeView) {
+            new Notice('No active note.');
+            return;
+        }
+
+        const selection = activeView.editor.getSelection();
+        if (!selection) {
+            new Notice('No text selected.');
+            return;
+        }
+
+        const content = await generatePreviewContent(selection, false, this.app, false);
+        if (!content) {
+            return;
+        }
+
+        return {
+            title: activeView.file?.basename
+                ? `${activeView.file.basename} snippet`
+                : 'Selection',
+            content,
+            bodyClasses: this.applyNotePrintClasses(content, activeView.file)
+        };
+    }
+
+    private async resolvePrintableMarkdownFileContent(file: TFile): Promise<ResolvedPrintContent | void> {
+        const content = this.getPrintableMarkdownViewContent(file) ?? await generatePreviewContent(
+            file,
+            this.settings.printTitle,
+            this.app,
+            this.settings.printFrontmatter
+        );
+
+        if (!content) {
+            return;
+        }
+
+        return {
+            content,
+            bodyClasses: this.applyNotePrintClasses(content, file)
+        };
+    }
+
+    private async buildFolderPrintContent(files: TFile[]): Promise<HTMLElement> {
+        const folderContent = createDiv();
+
+        for (const file of files) {
+            const printableContent = await this.resolvePrintableMarkdownFileContent(file);
+            if (!printableContent) {
+                continue;
+            }
+
+            if (!this.settings.combineFolderNotes) {
+                printableContent.content.addClass('obsidian-print-page-break');
+            }
+
+            folderContent.append(printableContent.content);
+        }
+
+        return folderContent;
+    }
+
+    private async openPrintableContent(
+        title: string,
+        printableContent: ResolvedPrintContent
+    ): Promise<void> {
+        const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
+
+        if (printableContent.bodyClasses) {
+            await openPrintModal(
+                title,
+                printableContent.content,
+                this.settings,
+                cssString,
+                printableContent.bodyClasses
+            );
+            return;
+        }
+
+        await openPrintModal(title, printableContent.content, this.settings, cssString);
+    }
+
+    private applyNotePrintClasses(content: HTMLElement, file?: TFile | null): string[] {
+        const noteCssClasses = this.getNotePrintClasses(file);
+
+        if (noteCssClasses.length > 0) {
+            content.classList.add(...noteCssClasses);
+        }
+
+        return noteCssClasses;
+    }
+
+    private getNotePrintClasses(file?: TFile | null): string[] {
+        if (!this.settings.inheritNoteCssClasses || !file) {
+            return [];
+        }
+
+        return getNoteCssClasses(this.app, file);
+    }
+
     private getPrintableBaseContent(file: TFile): HTMLElement | void {
         const activeView = this.getActiveFileView();
 
@@ -246,12 +305,63 @@ export default class PrintPlugin extends Plugin {
             return;
         }
 
-        const title = this.settings.printTitle ? file.basename : undefined;
-        return generateViewContent(activeView, title);
+        return generateViewContent(activeView, {
+            title: this.settings.printTitle ? file.basename : undefined
+        });
+    }
+
+    private getPrintableMarkdownViewContent(file: TFile): HTMLElement | void {
+        if (file.extension !== 'md') {
+            return;
+        }
+
+        const activeView = this.getActiveFileView() as ActiveMarkdownViewLike | null;
+
+        if (!activeView || activeView.file !== file) {
+            return;
+        }
+
+        if (activeView.getMode?.() !== 'preview') {
+            return;
+        }
+
+        const previewContainer = activeView.previewMode?.containerEl;
+        if (!previewContainer || !this.hasPrintablePreviewContent(previewContainer)) {
+            return;
+        }
+
+        activeView.previewMode?.rerender?.(true);
+
+        const leadingElements: HTMLElement[] = [];
+        if (this.settings.printFrontmatter) {
+            const frontmatterContent = createFrontmatterContent(file, this.app);
+            if (frontmatterContent) {
+                leadingElements.push(frontmatterContent);
+            }
+        }
+
+        return generateViewContent(
+            { containerEl: previewContainer },
+            {
+                leadingElements,
+                title: this.settings.printTitle ? file.basename : undefined
+            }
+        );
+    }
+
+    private hasPrintablePreviewContent(previewContainer: HTMLElement): boolean {
+        if (previewContainer.textContent?.trim()) {
+            return true;
+        }
+
+        return previewContainer.querySelector('*') !== null;
     }
 
     private getActiveFileView(): ActiveFileViewLike | null {
-        const activeFileView = this.app.workspace.getActiveFileView?.();
+        const workspaceWithActiveFileView = this.app.workspace as typeof this.app.workspace & {
+            getActiveFileView?: () => ActiveFileViewLike | null;
+        };
+        const activeFileView = workspaceWithActiveFileView.getActiveFileView?.();
         if (activeFileView) {
             return activeFileView as ActiveFileViewLike;
         }

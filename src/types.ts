@@ -12,6 +12,7 @@ export interface PrintPluginSettings {
     hrPageBreaks: boolean;
     debugMode: boolean;
     inheritNoteCssClasses: boolean;
+    normalizeStyle: boolean;
 }
 
 export const DEFAULT_SETTINGS: PrintPluginSettings = {
@@ -27,5 +28,6 @@ export const DEFAULT_SETTINGS: PrintPluginSettings = {
     combineFolderNotes: false,
     hrPageBreaks: false,
     debugMode: false,
-    inheritNoteCssClasses: false
+    inheritNoteCssClasses: false,
+    normalizeStyle: false
 };

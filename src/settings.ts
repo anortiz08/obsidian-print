@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import PrintPlugin from './main';
-import { getPrintSnippet, isPrintSnippetEnabled } from './utils/generatePrintStyles';
+import { getPrintSnippet, isPrintSnippetEnabled, setPrintSnippetEnabled } from './utils/generatePrintStyles';
+import { PrintPluginSettings } from './types';
 
 export class PrintSettingTab extends PluginSettingTab {
     plugin: PrintPlugin;
@@ -12,106 +13,145 @@ export class PrintSettingTab extends PluginSettingTab {
 
     display(): void {
         const { containerEl } = this;
+        const hasPrintSnippet = getPrintSnippet(this.app);
+        const isPrintSnippetActive = hasPrintSnippet && isPrintSnippetEnabled(this.app);
 
         containerEl.empty();
 
-        new Setting(containerEl)
-            .setName('Print note title')
-            .setDesc('Include the note title in the printout.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.printTitle)
-                .onChange(async (value) => {
-                    this.plugin.settings.printTitle = value;
-                    await this.plugin.saveSettings();
-                }));
+        this.addSectionHeading(containerEl, 'Content');
 
-        new Setting(containerEl)
-            .setName('Print frontmatter')
-            .setDesc('Include the note properties/frontmatter block at the top of the printout.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.printFrontmatter)
-                .onChange(async (value) => {
-                    this.plugin.settings.printFrontmatter = value;
-                    await this.plugin.saveSettings();
-                }));
+        this.addToggleSetting(
+            containerEl,
+            'Print note title',
+            'Include the note title in the printout.',
+            'printTitle'
+        );
+        this.addToggleSetting(
+            containerEl,
+            'Print properties',
+            'Include the note properties/frontmatter block at the top of the printout.',
+            'printFrontmatter'
+        );
 
-        new Setting(containerEl)
-            .setName('Font size')
-            .setDesc('Set the font size for the printed note.')
-            .addText(text => text
-                .setPlaceholder('14px')
-                .setValue(this.plugin.settings.fontSize)
-                .onChange(async (value) => {
-                    this.plugin.settings.fontSize = value;
-                    await this.plugin.saveSettings();
-                }));
+        this.addSectionHeading(containerEl, 'Styling');
 
+        this.addToggleSetting(
+            containerEl,
+            'Normalize style',
+            'Use a neutral built-in print style instead of carrying over the active Obsidian theme styling. Helpful when your theme is too decorative for printing.',
+            'normalizeStyle',
+            async () => this.display()
+        );
 
+        if (this.plugin.settings.normalizeStyle) {
+            this.addTextSetting(
+                containerEl,
+                'Font size',
+                'Set the body font size for normalized print output.',
+                'fontSize'
+            );
 
-        const headings = ['h1Size', 'h2Size', 'h3Size', 'h4Size', 'h5Size', 'h6Size'] as const;
+            const headings = ['h1Size', 'h2Size', 'h3Size', 'h4Size', 'h5Size', 'h6Size'] as const;
 
-        headings.forEach((heading, index) => {
-            new Setting(containerEl)
-                .setName(`Heading ${index + 1} size`)
-                .setDesc(`Set the size for <h${index + 1}> elements.`)
-                .addText(text => text
-                    .setPlaceholder(`${this.plugin.settings[heading]}`)
-                    .setValue(this.plugin.settings[heading])
-                    .onChange(async (value) => {
-                        this.plugin.settings[heading] = value;
-                        await this.plugin.saveSettings();
-                    }));
-        });
+            headings.forEach((heading, index) => {
+                this.addTextSetting(
+                    containerEl,
+                    `Heading ${index + 1} size`,
+                    `Set the size for <h${index + 1}> elements in normalized print output.`,
+                    heading
+                );
+            });
+        }
 
-        new Setting(containerEl)
-            .setName('Combine folder notes')
-            .setDesc('When printing a folder, combine all notes into a single document. If disabled, each note will start on a new page.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.combineFolderNotes)
-                .onChange(async (value) => {
-                    this.plugin.settings.combineFolderNotes = value;
-                    await this.plugin.saveSettings();
-                }));
+        this.addToggleSetting(
+            containerEl,
+            'Inherit note `cssclasses`',
+            'Apply Obsidian note `cssclasses` from frontmatter/properties to the printed output. For folder printing, each note keeps its own classes.',
+            'inheritNoteCssClasses'
+        );
 
-        new Setting(containerEl)
-            .setName('Treat horizontal lines as page breaks')
-            .setDesc('Enable this option to interpret horizontal lines (---) as page breaks ')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.hrPageBreaks)
-                .onChange(async (value) => {
-                    this.plugin.settings.hrPageBreaks = value;
-                    await this.plugin.saveSettings();
-                }));
+        this.addSectionHeading(containerEl, 'Layout');
 
-        new Setting(containerEl)
-            .setName('Debug mode')
-            .setDesc('Enable debug mode. This will open the print window for inspection.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.debugMode)
-                .onChange(async (value) => {
-                    this.plugin.settings.debugMode = value;
-                    await this.plugin.saveSettings();
-                }));
+        this.addToggleSetting(
+            containerEl,
+            'Combine folder notes',
+            'When printing a folder, combine all notes into a single document. If disabled, each note will start on a new page.',
+            'combineFolderNotes'
+        );
+        this.addToggleSetting(
+            containerEl,
+            'Treat horizontal lines as page breaks',
+            'Enable this option to interpret horizontal lines (---) as page breaks.',
+            'hrPageBreaks'
+        );
 
-        new Setting(containerEl)
-            .setName('Inherit note `cssclasses`')
-            .setDesc('Apply Obsidian note `cssclasses` from frontmatter/properties to the printed output. For folder printing, each note keeps its own classes.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.inheritNoteCssClasses)
-                .onChange(async (value) => {
-                    this.plugin.settings.inheritNoteCssClasses = value;
-                    await this.plugin.saveSettings();
-                }));
+        this.addSectionHeading(containerEl, 'Advanced');
 
         new Setting(containerEl)
             .setName('Custom CSS')
-            .setDesc(`You can add a custom "print.css" to "Appearance > CSS snippets", then this toggle will be enabled and synced with CSS snippets. The easier way is to add your styles using @media print {body {...}}.`)
+            .setDesc('Enable a snippet named `print.css` from Appearance > CSS snippets. Use it for print-specific overrides wrapped in `@media print` or scoped to `.obsidian-print`.')
             .addToggle(toggle => toggle
-                .setValue(getPrintSnippet(this.app) && isPrintSnippetEnabled(this.app))
+                .setValue(isPrintSnippetActive)
                 .onChange(async (value) => {
-                    this.app.customCss.setCssEnabledStatus("print", value);
+                    setPrintSnippetEnabled(this.app, value);
                     await this.plugin.saveSettings();
                 }))
-            .setDisabled(!getPrintSnippet(this.app));
+            .setDisabled(!hasPrintSnippet);
+
+        this.addToggleSetting(
+            containerEl,
+            'Debug mode',
+            'Enable debug mode. This will open the print window for inspection.',
+            'debugMode'
+        );
+    }
+
+    private addSectionHeading(containerEl: HTMLElement, text: string): void {
+        containerEl.createEl('h3', { text });
+    }
+
+    private addToggleSetting<K extends ToggleSettingKey>(
+        containerEl: HTMLElement,
+        name: string,
+        description: string,
+        key: K,
+        onAfterChange?: () => void | Promise<void>
+    ): void {
+        new Setting(containerEl)
+            .setName(name)
+            .setDesc(description)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings[key])
+                .onChange(async (value) => {
+                    this.plugin.settings[key] = value;
+                    await this.plugin.saveSettings();
+                    await onAfterChange?.();
+                }));
+    }
+
+    private addTextSetting<K extends TextSettingKey>(
+        containerEl: HTMLElement,
+        name: string,
+        description: string,
+        key: K
+    ): void {
+        new Setting(containerEl)
+            .setName(name)
+            .setDesc(description)
+            .addText(text => text
+                .setPlaceholder(this.plugin.settings[key])
+                .setValue(this.plugin.settings[key])
+                .onChange(async (value) => {
+                    this.plugin.settings[key] = value;
+                    await this.plugin.saveSettings();
+                }));
     }
 }
+
+type ToggleSettingKey = {
+    [Key in keyof PrintPluginSettings]: PrintPluginSettings[Key] extends boolean ? Key : never;
+}[keyof PrintPluginSettings];
+
+type TextSettingKey = {
+    [Key in keyof PrintPluginSettings]: PrintPluginSettings[Key] extends string ? Key : never;
+}[keyof PrintPluginSettings];

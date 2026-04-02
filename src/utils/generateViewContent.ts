@@ -4,7 +4,16 @@ interface PrintableViewLike {
     containerEl?: HTMLElement;
 }
 
+interface GenerateViewContentOptions {
+    leadingElements?: HTMLElement[];
+    title?: string;
+}
+
 const VIEW_ROOT_SELECTORS = [
+    '.markdown-reading-view',
+    '.markdown-preview-view',
+    '.markdown-preview-sizer',
+    '.markdown-rendered',
     '.bases-view',
     '.base-view',
     '[class*="bases"]',
@@ -17,13 +26,14 @@ const VIEW_CHROME_SELECTORS = [
     '[role="toolbar"]',
     '.clickable-icon',
     '.mod-action-button',
+    '.inline-title',
     '.bases-toolbar',
     '.bases-view-toolbar'
 ];
 
 export function generateViewContent(
     view: PrintableViewLike | null | undefined,
-    title?: string
+    options: GenerateViewContentOptions = {}
 ): HTMLElement | void {
     const sourceRoot = resolveViewRoot(view);
     if (!sourceRoot) {
@@ -33,8 +43,12 @@ export function generateViewContent(
 
     const content = createDiv();
 
-    if (title) {
-        content.createEl('h1', { text: title });
+    options.leadingElements?.forEach((element) => {
+        content.appendChild(element);
+    });
+
+    if (options.title) {
+        content.createEl('h1', { text: options.title });
     }
 
     const wrapper = document.createElement('div');

@@ -71,4 +71,23 @@ flowchart TD
         expect(content?.textContent).toContain('Start --> Finish');
         expect(content?.querySelector('pre code.language-mermaid')).toBeFalsy();
     });
+
+    it('marks rendered content with Obsidian preview classes for theme style reuse', async () => {
+        const file = createFile();
+        const app = {
+            vault: {
+                cachedRead: async () => 'Body copy'
+            },
+            metadataCache: {
+                getFileCache: () => undefined
+            }
+        };
+
+        const content = await generatePreviewContent(file, false, app as never, false);
+
+        expect(content?.classList.contains('obsidian-print-note')).toBe(true);
+        expect(content?.classList.contains('markdown-rendered')).toBe(true);
+        expect(content?.classList.contains('markdown-reading-view')).toBe(true);
+        expect(content?.classList.contains('markdown-preview-view')).toBe(true);
+    });
 });

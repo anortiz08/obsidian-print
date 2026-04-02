@@ -22,7 +22,10 @@ export async function openPrintModal(
     cssString: string,
     bodyClasses: string[] = []
 ): Promise<void> {
-    const runtimeCss = getTargetedRuntimePrintCss(content);
+    const includeThemeStyles = !settings.normalizeStyle;
+    const runtimeCss = includeThemeStyles
+        ? getTargetedRuntimePrintCss(content)
+        : '';
     const combinedCssString = [cssString, runtimeCss]
         .filter((value) => value.trim().length > 0)
         .join('\n');
@@ -59,7 +62,13 @@ export async function openPrintModal(
          * This uses outerHTML solely when debug mode is turned on to make it easier to inspect the generated HTML
          * and CSS stylying. For debuggers: Press `cmd/ctrl + p` in the DevTools and search for 'Emulate CSS Print media type'
          */
-        const debugContent = createDebugPrintHtml(content, combinedCssString, title, bodyClasses);
+        const debugContent = createDebugPrintHtml(
+            content,
+            combinedCssString,
+            title,
+            bodyClasses,
+            includeThemeStyles
+        );
         printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(debugContent)}`);
 
         printWindow.webContents.on('did-finish-load', () => {
@@ -77,7 +86,7 @@ export async function openPrintModal(
 
     d.print(content, [combinedCssString], undefined, ({ iframe, launchPrint }) => {
         if (iframe.contentDocument) {
-            applyRuntimePrintClasses(iframe.contentDocument);
+            applyRuntimePrintClasses(iframe.contentDocument, includeThemeStyles);
             iframe.contentDocument.title = title;
 
             if (bodyClasses.length > 0) {

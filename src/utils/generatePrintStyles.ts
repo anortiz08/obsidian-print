@@ -1,6 +1,15 @@
 import { App, Notice, PluginManifest } from "obsidian";
 import { PrintPluginSettings } from "src/types";
-import { CustomCSS } from "obsidian-typings";
+import { NORMALIZED_PRINT_STYLES } from "./normalizedPrintStyles";
+
+interface CustomCssLike {
+    csscache: Map<string, string>;
+    enabledSnippets: Set<string>;
+    snippets: {
+        contains: (name: string) => boolean;
+    };
+    setCssEnabledStatus: (name: string, enabled: boolean) => void;
+}
 
 /**
  * Retrieves styles.css from plugin and the optional print.css snippet. 
@@ -12,30 +21,78 @@ import { CustomCSS } from "obsidian-typings";
  * @returns 
  */
 export async function generatePrintStyles(app: App, manifest: PluginManifest, settings: PrintPluginSettings): Promise<string> {
-    const adapter = app.vault.adapter;
+    const cssSections = [
+        getSizeOverrideStyles(settings),
+        getHorizontalRuleStyles(settings),
+        await getPluginStyles(app, manifest),
+        getNormalizedPrintStyles(settings),
+        getPropertiesStyles(settings),
+        getUserSnippetStyles(app)
+    ];
 
-    let pluginStyle = '';
-    let userStyle = '';
+    return cssSections
+        .filter((cssText) => cssText.trim().length > 0)
+        .join('\n');
+}
 
-    if (manifest.dir) {
-        const cssPath = `${manifest.dir}/styles.css`;
-        try {
-            pluginStyle = await adapter.read(cssPath);
-        } catch (error) {
-            new Notice('Default styling could not be located.');
-        }
-    } else {
+export function setPrintSnippetEnabled(app: App, enabled: boolean): void {
+    getCustomCss(app).setCssEnabledStatus('print', enabled);
+}
+
+async function getPluginStyles(app: App, manifest: PluginManifest): Promise<string> {
+    if (!manifest.dir) {
         new Notice('Could not find the plugin path. No default print styles will be added.');
+        return '';
     }
 
-    // Read user styles (optional)
-    // Only include if the print.css is activated and still exists.
-    if (getPrintSnippet(app) && isPrintSnippetEnabled(app)) {
-        userStyle = getPrintSnippetValue(app) ?? '';        
+    try {
+        return await app.vault.adapter.read(`${manifest.dir}/styles.css`);
+    } catch (error) {
+        new Notice('Default styling could not be located.');
+        return '';
+    }
+}
+
+function getUserSnippetStyles(app: App): string {
+    if (!getPrintSnippet(app) || !isPrintSnippetEnabled(app)) {
+        return '';
     }
 
-    const frontmatterStyles = settings.printFrontmatter
-        ? `
+    return getPrintSnippetValue(app) ?? '';
+}
+
+function getSizeOverrideStyles(settings: PrintPluginSettings): string {
+    if (!settings.normalizeStyle) {
+        return '';
+    }
+
+    return `
+        body { font-size: ${settings.fontSize}; }
+        h1 { font-size: ${settings.h1Size}; }
+        h2 { font-size: ${settings.h2Size}; }
+        h3 { font-size: ${settings.h3Size}; }
+        h4 { font-size: ${settings.h4Size}; }
+        h5 { font-size: ${settings.h5Size}; }
+        h6 { font-size: ${settings.h6Size}; }
+    `;
+}
+
+function getHorizontalRuleStyles(settings: PrintPluginSettings): string {
+    return `hr { page-break-before: ${settings.hrPageBreaks ? 'always' : 'auto'}; border-width: ${settings.hrPageBreaks ? '0' : 'revert-layer'}; }`;
+}
+
+function getNormalizedPrintStyles(settings: PrintPluginSettings): string {
+    return settings.normalizeStyle
+        ? NORMALIZED_PRINT_STYLES
+        : '';
+}
+
+function getPropertiesStyles(settings: PrintPluginSettings): string {
+    if (!settings.printFrontmatter) {
+        return '';
+    }
+
+    return `
         .obsidian-print-frontmatter {
             display: block !important;
             margin: 0 0 1.5rem;
@@ -85,35 +142,23 @@ export async function generatePrintStyles(app: App, manifest: PluginManifest, se
         .obsidian-print-frontmatter-object-value {
             margin: 0;
         }
-        `
-        : '';
-
-    return `
-        body { font-size: ${settings.fontSize}; }
-        h1 { font-size: ${settings.h1Size}; }
-        h2 { font-size: ${settings.h2Size}; }
-        h3 { font-size: ${settings.h3Size}; }
-        h4 { font-size: ${settings.h4Size}; }
-        h5 { font-size: ${settings.h5Size}; }
-        h6 { font-size: ${settings.h6Size}; }
-        hr { page-break-before: ${settings.hrPageBreaks ? 'always' : 'auto'}; border-width: ${settings.hrPageBreaks ? '0' : 'revert-layer'}; }
-        ${pluginStyle}
-        ${frontmatterStyles}
-        ${userStyle}
     `;
 }
 
-
 function getPrintSnippetValue(app: App,): string | undefined {
     const printCssPath = ".obsidian/snippets/print.css";
-    return app.customCss.csscache.get(printCssPath);
+    return getCustomCss(app).csscache.get(printCssPath);
 }
 
 
 export function isPrintSnippetEnabled(app: App): boolean {
-    return app.customCss.enabledSnippets.has("print")
+    return getCustomCss(app).enabledSnippets.has("print")
 }
 
 export function getPrintSnippet(app: App): boolean {
-    return app.customCss.snippets.contains("print");
+    return getCustomCss(app).snippets.contains("print");
+}
+
+function getCustomCss(app: App): CustomCssLike {
+    return (app as App & { customCss: CustomCssLike }).customCss;
 }

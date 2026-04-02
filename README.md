@@ -39,20 +39,21 @@ If you print often, you probably want to add a shortcut to one or more print com
 ## Settings
 
 - **Print note title**: Include the note title in the printout.
-- **Print frontmatter**: Include note properties/frontmatter at the top of the printed note.
-- **Font size and heading sizes**: Adjust body text and heading sizes through the settings panel.
+- **Print properties**: Include note properties/frontmatter at the top of the printed note.
+- **Font size and heading sizes**: Adjust body text and heading sizes when **Normalize style** is enabled.
 - **Combine folder notes**: Remove page breaks between notes when printing all notes from a folder.
 - **Treat horizontal lines as page breaks**: Interpret `---` separators as print page breaks.
 - **Debug mode**: Open a separate inspection window with the generated HTML and CSS so you can troubleshoot styling issues.
 - **Inherit note `cssclasses`**: Apply Obsidian note `cssclasses` to printed output so note-specific print CSS can carry over.
-- **Custom CSS**: Enable a `print.css` snippet from Obsidian's CSS snippets folder when available.
+- **Normalize style**: Use a neutral built-in print style instead of carrying over the active Obsidian theme styling.
+- **Custom CSS**: In Advanced settings, enable a `print.css` snippet from Obsidian's CSS snippets folder when available.
 
 ![image](https://github.com/user-attachments/assets/2ffed185-cc8f-43d9-8444-7cb9657d61f7)
 
 ## Customize CSS
 
-In the settings, you can adjust the font size for all headings and text, and optionally hide the title.
+In the settings, you can optionally hide the title, and when **Normalize style** is enabled you can also adjust the font size for body text and headings.
 
-To further customize the appearance of your printed notes, you can create a `print.css` snippet in `.obsidian/snippets` and enable it from the plugin settings once Obsidian detects it. The printed document's body contains the `obsidian-print` class. Be sure to either wrap your CSS in `@media print` or prefix your print-specific CSS with `.obsidian-print` so it only applies to printed content. If you enable **Inherit note `cssclasses`**, note-level Obsidian classes will be available in the printed output as well. Theme styles for code blocks and MathJax are also carried into the print document when needed. You can view the default styles [in this file](/styles.css). Every individual note contains the `obsidian-print-note` class.
+To further customize the appearance of your printed notes, you can create a `print.css` snippet in `.obsidian/snippets` and enable it from the plugin settings once Obsidian detects it. The printed document's body contains the `obsidian-print` class. Be sure to either wrap your CSS in `@media print` or prefix your print-specific CSS with `.obsidian-print` so it only applies to printed content. If you enable **Inherit note `cssclasses`**, note-level Obsidian classes will be available in the printed output as well. Theme styles for code blocks and MathJax are also carried into the print document when needed, unless you enable **Normalize style** to use the plugin's neutral fallback styling instead. You can view the default styles [in this file](/styles.css). Every individual note contains the `obsidian-print-note` class.
 
 If you have trouble with the styling, enable Debug Mode to open an inspection window for the generated print document.

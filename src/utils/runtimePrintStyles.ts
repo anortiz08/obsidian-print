@@ -15,11 +15,18 @@ const TARGET_SELECTOR_PATTERNS = [
 ];
 
 const CSS_VARIABLE_PATTERN = /var\((--[\w-]+)/g;
+const MATCH_ROOT_ATTRIBUTE = 'data-obsidian-print-match-root';
+
+interface SelectorMatchContext {
+    structuralMarkers: Set<string>;
+    document: Document | null;
+}
 
 export function getTargetedRuntimePrintCss(rootElement?: ParentNode): string {
     const collectedRules: string[] = [];
     const seenRules = new Set<string>();
     const usedVariables = new Set<string>();
+    const selectorMatchContext = createSelectorMatchContext(rootElement);
 
     Array.from(document.styleSheets).forEach((sheet) => {
         collectStyleSheetRules(
@@ -27,7 +34,8 @@ export function getTargetedRuntimePrintCss(rootElement?: ParentNode): string {
             collectedRules,
             seenRules,
             usedVariables,
-            rootElement
+            rootElement,
+            selectorMatchContext
         );
     });
 
@@ -38,13 +46,15 @@ export function getTargetedRuntimePrintCss(rootElement?: ParentNode): string {
         .join('\n');
 }
 
-export function applyRuntimePrintClasses(doc: Document): void {
-    doc.documentElement.className = document.documentElement.className;
+export function applyRuntimePrintClasses(doc: Document, includeAppClasses = true): void {
+    doc.documentElement.className = includeAppClasses
+        ? document.documentElement.className
+        : '';
 
     const classNames = [
         doc.body.className,
         'obsidian-print',
-        document.body.className
+        includeAppClasses ? document.body.className : ''
     ]
         .join(' ')
         .split(/\s+/)
@@ -57,10 +67,13 @@ export function createDebugPrintHtml(
     content: HTMLElement,
     cssText: string,
     title = 'Print note',
-    bodyClasses: string[] = []
+    bodyClasses: string[] = [],
+    includeAppClasses = true
 ): string {
     const htmlElement = document.createElement('html');
-    htmlElement.className = document.documentElement.className;
+    htmlElement.className = includeAppClasses
+        ? document.documentElement.className
+        : '';
 
     const headElement = document.createElement('head');
     const metaElement = document.createElement('meta');
@@ -78,7 +91,7 @@ export function createDebugPrintHtml(
     htmlElement.appendChild(headElement);
 
     const bodyElement = document.createElement('body');
-    applyRuntimePrintClassesToElement(bodyElement);
+    applyRuntimePrintClassesToElement(bodyElement, includeAppClasses);
     if (bodyClasses.length > 0) {
         bodyElement.classList.add(...bodyClasses);
     }
@@ -94,7 +107,8 @@ function collectStyleSheetRules(
     collectedRules: string[],
     seenRules: Set<string>,
     usedVariables: Set<string>,
-    rootElement?: ParentNode
+    rootElement?: ParentNode,
+    selectorMatchContext?: SelectorMatchContext
 ): void {
     const cssSheet = sheet as CSSStyleSheet;
     let rules: CSSRuleList;
@@ -105,7 +119,14 @@ function collectStyleSheetRules(
         return;
     }
 
-    collectRuleList(rules, collectedRules, seenRules, usedVariables, rootElement);
+    collectRuleList(
+        rules,
+        collectedRules,
+        seenRules,
+        usedVariables,
+        rootElement,
+        selectorMatchContext
+    );
 }
 
 function collectRuleList(
@@ -113,12 +134,13 @@ function collectRuleList(
     collectedRules: string[],
     seenRules: Set<string>,
     usedVariables: Set<string>,
-    rootElement?: ParentNode
+    rootElement?: ParentNode,
+    selectorMatchContext?: SelectorMatchContext
 ): void {
     Array.from(rules).forEach((rule) => {
         if (rule.type === CSSRule.STYLE_RULE) {
             const styleRule = rule as CSSStyleRule;
-            if (!matchesTargetSelector(styleRule.selectorText, rootElement)) {
+            if (!matchesTargetSelector(styleRule.selectorText, rootElement, selectorMatchContext)) {
                 return;
             }
 
@@ -131,7 +153,14 @@ function collectRuleList(
             const mediaRule = rule as CSSMediaRule;
             const nestedRules: string[] = [];
 
-            collectRuleList(mediaRule.cssRules, nestedRules, seenRules, usedVariables, rootElement);
+            collectRuleList(
+                mediaRule.cssRules,
+                nestedRules,
+                seenRules,
+                usedVariables,
+                rootElement,
+                selectorMatchContext
+            );
 
             if (nestedRules.length > 0) {
                 addRuleText(
@@ -151,19 +180,28 @@ function collectRuleList(
                     collectedRules,
                     seenRules,
                     usedVariables,
-                    rootElement
+                    rootElement,
+                    selectorMatchContext
                 );
             }
         }
     });
 }
 
-function matchesTargetSelector(selectorText: string, rootElement?: ParentNode): boolean {
+function matchesTargetSelector(
+    selectorText: string,
+    rootElement?: ParentNode,
+    selectorMatchContext?: SelectorMatchContext
+): boolean {
     return TARGET_SELECTOR_PATTERNS.some((pattern) => pattern.test(selectorText))
-        || selectorMatchesContent(selectorText, rootElement);
+        || selectorMatchesContent(selectorText, rootElement, selectorMatchContext);
 }
 
-function selectorMatchesContent(selectorText: string, rootElement?: ParentNode): boolean {
+function selectorMatchesContent(
+    selectorText: string,
+    rootElement?: ParentNode,
+    selectorMatchContext?: SelectorMatchContext
+): boolean {
     if (!rootElement) {
         return false;
     }
@@ -175,10 +213,15 @@ function selectorMatchesContent(selectorText: string, rootElement?: ParentNode):
     const normalizedSelector = selectorText.replace(/::[\w-]+/g, '');
 
     if (normalizedSelector !== selectorText) {
-        return querySelectorAgainstRoot(normalizedSelector, rootElement);
+        if (querySelectorAgainstRoot(normalizedSelector, rootElement)) {
+            return true;
+        }
     }
 
-    return false;
+    return querySelectorAgainstDocument(
+        normalizedSelector !== selectorText ? normalizedSelector : selectorText,
+        selectorMatchContext
+    );
 }
 
 function querySelectorAgainstRoot(selectorText: string, rootElement: ParentNode): boolean {
@@ -193,6 +236,86 @@ function querySelectorAgainstRoot(selectorText: string, rootElement: ParentNode)
     } catch (error) {
         return false;
     }
+}
+
+function createSelectorMatchContext(rootElement?: ParentNode): SelectorMatchContext {
+    const elementRoot = rootElement as Element | undefined;
+
+    if (!elementRoot || typeof elementRoot.cloneNode !== 'function') {
+        return {
+            structuralMarkers: new Set<string>(),
+            document: null
+        };
+    }
+
+    const selectorMatchDocument = document.implementation.createHTMLDocument('Obsidian Print Selector Match');
+    selectorMatchDocument.documentElement.className = document.documentElement.className;
+    selectorMatchDocument.body.className = document.body.className;
+
+    const clonedRoot = elementRoot.cloneNode(true) as HTMLElement;
+    clonedRoot.setAttribute(MATCH_ROOT_ATTRIBUTE, '');
+    selectorMatchDocument.body.appendChild(clonedRoot);
+
+    return {
+        structuralMarkers: collectStructuralMarkers(clonedRoot),
+        document: selectorMatchDocument
+    };
+}
+
+function querySelectorAgainstDocument(
+    selectorText: string,
+    selectorMatchContext?: SelectorMatchContext
+): boolean {
+    if (!selectorMatchContext?.document) {
+        return false;
+    }
+
+    if (!selectorContainsStructuralMarker(selectorText, selectorMatchContext.structuralMarkers)) {
+        return false;
+    }
+
+    try {
+        const match = selectorMatchContext.document.querySelector(selectorText);
+
+        if (!match) {
+            return false;
+        }
+
+        return Boolean(match.closest(`[${MATCH_ROOT_ATTRIBUTE}]`));
+    } catch (error) {
+        return false;
+    }
+}
+
+function collectStructuralMarkers(rootElement: Element): Set<string> {
+    const markers = new Set<string>();
+    const elements = [rootElement, ...Array.from(rootElement.querySelectorAll('*'))];
+
+    elements.forEach((element) => {
+        element.classList.forEach((className) => {
+            markers.add(`.${className}`);
+        });
+
+        if (element.id) {
+            markers.add(`#${element.id}`);
+        }
+    });
+
+    return markers;
+}
+
+function selectorContainsStructuralMarker(selectorText: string, structuralMarkers: Set<string>): boolean {
+    if (structuralMarkers.size === 0) {
+        return false;
+    }
+
+    for (const marker of structuralMarkers) {
+        if (selectorText.includes(marker)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function collectVariables(cssText: string, usedVariables: Set<string>): void {
@@ -246,10 +369,10 @@ function addRuleText(cssText: string, collectedRules: string[], seenRules: Set<s
     collectedRules.push(cssText);
 }
 
-function applyRuntimePrintClassesToElement(bodyElement: HTMLElement): void {
+function applyRuntimePrintClassesToElement(bodyElement: HTMLElement, includeAppClasses = true): void {
     const classNames = [
         'obsidian-print',
-        document.body.className
+        includeAppClasses ? document.body.className : ''
     ]
         .join(' ')
         .split(/\s+/)
