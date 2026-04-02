@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 - 2026-04-02
+
+- Improved printed properties/frontmatter styling to better match Obsidian's properties UI instead of a generic export table.
+- Added richer frontmatter rendering for booleans, chip-style arrays, nested objects, and external links in printed output.
+- Made printed properties more compact so they consume less page space.
+- Forced the print document into light mode so exports stay readable even when Obsidian is using a dark theme.
+- Expanded test coverage for properties rendering and light-theme print behavior.
+
 ## 0.4.0 - 2026-04-02
 
 - Added a setting to print note frontmatter/properties above the note content.

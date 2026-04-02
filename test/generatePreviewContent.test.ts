@@ -20,11 +20,17 @@ describe('generatePreviewContent', () => {
             metadataCache: {
                 getFileCache: () => ({
                     frontmatter: {
+                        cssclasses: ['invoice', 'compact-print'],
                         title: 'Quarterly packet',
-                        tags: ['finance', 'print'],
+                        aliases: ['Q2 packet', 'Print regression sample'],
+                        tags: ['finance/q2', 'print/testing'],
+                        reviewed: true,
                         client: {
                             name: 'Northwind Press',
                             contact: 'Ada Lovelace'
+                        },
+                        links: {
+                            docs: 'https://obsidian.md'
                         },
                         position: {
                             start: {
@@ -40,8 +46,11 @@ describe('generatePreviewContent', () => {
 
         expect(content).toBeTruthy();
         expect(content?.querySelector('.obsidian-print-frontmatter')).toBeTruthy();
-        expect(content?.querySelectorAll('.obsidian-print-frontmatter-list li')).toHaveLength(2);
+        expect(content?.querySelector('.obsidian-print-frontmatter-heading')?.textContent).toBe('Properties');
+        expect(content?.querySelectorAll('.obsidian-print-frontmatter-chip')).toHaveLength(6);
         expect(content?.querySelector('.obsidian-print-frontmatter-object-key')?.textContent).toBe('name');
+        expect(content?.querySelector('.obsidian-print-frontmatter-boolean.is-checked')).toBeTruthy();
+        expect(content?.querySelector('.obsidian-print-frontmatter-link')?.getAttribute('href')).toBe('https://obsidian.md');
         expect(content?.textContent).toContain('Quarterly packet');
         expect(content?.textContent).toContain('Northwind Press');
         expect(content?.textContent).toContain('Body copy');

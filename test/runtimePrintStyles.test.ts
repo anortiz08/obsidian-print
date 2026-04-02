@@ -100,37 +100,78 @@ describe('getTargetedRuntimePrintCss', () => {
         }
     });
 
-    it('collects theme-scoped selectors that match printed content through body classes', () => {
+    it('collects light-theme selectors for print even when the app is in dark mode', () => {
         const previousBodyClassName = document.body.className;
+        const previousHtmlClassName = document.documentElement.className;
         const styleElement = document.createElement('style');
         styleElement.textContent = `
             body.theme-dark .markdown-reading-view h1 {
                 color: papayawhip;
             }
 
-            body.theme-dark p {
-                color: ghostwhite;
+            body.theme-light .markdown-reading-view h1 {
+                color: midnightblue;
             }
 
-            body.theme-dark {
-                background: black;
+            body.theme-light p {
+                color: slategray;
             }
         `;
 
         const printedRoot = document.createElement('div');
         printedRoot.className = 'markdown-reading-view';
         printedRoot.innerHTML = '<h1>Theme-aware heading</h1>';
+        document.documentElement.className = 'theme-dark mod-windows';
         document.body.className = 'theme-dark';
         document.head.appendChild(styleElement);
 
         try {
             const cssText = getTargetedRuntimePrintCss(printedRoot);
 
-            expect(cssText).toContain('body.theme-dark .markdown-reading-view h1');
-            expect(cssText).not.toContain('body.theme-dark p');
-            expect(cssText).not.toContain('body.theme-dark {');
+            expect(cssText).toContain('body.theme-light .markdown-reading-view h1');
+            expect(cssText).not.toContain('body.theme-dark .markdown-reading-view h1');
+            expect(cssText).not.toContain('body.theme-light p');
         } finally {
             styleElement.remove();
+            document.documentElement.className = previousHtmlClassName;
+            document.body.className = previousBodyClassName;
+        }
+    });
+
+    it('resolves runtime CSS variables from the light theme for print', () => {
+        const previousHtmlClassName = document.documentElement.className;
+        const previousBodyClassName = document.body.className;
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+            .theme-dark {
+                --text-normal: ghostwhite;
+            }
+
+            .theme-light {
+                --text-normal: rgb(17, 24, 39);
+            }
+
+            .markdown-reading-view h1 {
+                color: var(--text-normal);
+            }
+        `;
+
+        const printedRoot = document.createElement('div');
+        printedRoot.className = 'markdown-reading-view';
+        printedRoot.innerHTML = '<h1>Variable-backed heading</h1>';
+        document.documentElement.className = 'theme-dark';
+        document.body.className = 'workspace theme-dark';
+        document.head.appendChild(styleElement);
+
+        try {
+            const cssText = getTargetedRuntimePrintCss(printedRoot);
+
+            expect(cssText).toContain('.markdown-reading-view h1');
+            expect(cssText).toContain('--text-normal: rgb(17, 24, 39);');
+            expect(cssText).not.toContain('--text-normal: ghostwhite;');
+        } finally {
+            styleElement.remove();
+            document.documentElement.className = previousHtmlClassName;
             document.body.className = previousBodyClassName;
         }
     });
@@ -157,6 +198,35 @@ describe('getTargetedRuntimePrintCss', () => {
             expect(debugContent).not.toContain('theme-dark');
             expect(printDoc.documentElement.className).toBe('');
             expect(printDoc.body.className).toBe('obsidian-print');
+        } finally {
+            document.documentElement.className = previousHtmlClassName;
+            document.body.className = previousBodyClassName;
+        }
+    });
+
+    it('forces light theme classes onto the print document when app classes are included', () => {
+        const previousHtmlClassName = document.documentElement.className;
+        const previousBodyClassName = document.body.className;
+        document.documentElement.className = 'theme-dark mod-windows';
+        document.body.className = 'workspace theme-dark is-focused';
+
+        try {
+            const debugContent = createDebugPrintHtml(
+                document.createElement('div'),
+                '',
+                'Print note',
+                [],
+                true
+            );
+            const printDoc = document.implementation.createHTMLDocument('Print');
+
+            applyRuntimePrintClasses(printDoc, true);
+
+            expect(debugContent).toContain('<html class="mod-windows theme-light">');
+            expect(debugContent).toContain('<body class="obsidian-print workspace is-focused theme-light">');
+            expect(debugContent).not.toContain('theme-dark');
+            expect(printDoc.documentElement.className).toBe('mod-windows theme-light');
+            expect(printDoc.body.className).toBe('obsidian-print workspace is-focused theme-light');
         } finally {
             document.documentElement.className = previousHtmlClassName;
             document.body.className = previousBodyClassName;

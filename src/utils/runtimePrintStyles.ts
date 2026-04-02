@@ -16,6 +16,8 @@ const TARGET_SELECTOR_PATTERNS = [
 
 const CSS_VARIABLE_PATTERN = /var\((--[\w-]+)/g;
 const MATCH_ROOT_ATTRIBUTE = 'data-obsidian-print-match-root';
+const THEME_CLASS_PATTERN = /\btheme-(?:dark|light)\b/g;
+const LIGHT_THEME_CLASS = 'theme-light';
 
 interface SelectorMatchContext {
     structuralMarkers: Set<string>;
@@ -48,19 +50,10 @@ export function getTargetedRuntimePrintCss(rootElement?: ParentNode): string {
 
 export function applyRuntimePrintClasses(doc: Document, includeAppClasses = true): void {
     doc.documentElement.className = includeAppClasses
-        ? document.documentElement.className
+        ? toLightThemeClassName(document.documentElement.className)
         : '';
 
-    const classNames = [
-        doc.body.className,
-        'obsidian-print',
-        includeAppClasses ? document.body.className : ''
-    ]
-        .join(' ')
-        .split(/\s+/)
-        .filter(Boolean);
-
-    doc.body.className = Array.from(new Set(classNames)).join(' ');
+    applyRuntimePrintClassesToElement(doc.body, includeAppClasses);
 }
 
 export function createDebugPrintHtml(
@@ -72,7 +65,7 @@ export function createDebugPrintHtml(
 ): string {
     const htmlElement = document.createElement('html');
     htmlElement.className = includeAppClasses
-        ? document.documentElement.className
+        ? toLightThemeClassName(document.documentElement.className)
         : '';
 
     const headElement = document.createElement('head');
@@ -249,8 +242,8 @@ function createSelectorMatchContext(rootElement?: ParentNode): SelectorMatchCont
     }
 
     const selectorMatchDocument = document.implementation.createHTMLDocument('Obsidian Print Selector Match');
-    selectorMatchDocument.documentElement.className = document.documentElement.className;
-    selectorMatchDocument.body.className = document.body.className;
+    selectorMatchDocument.documentElement.className = toLightThemeClassName(document.documentElement.className);
+    selectorMatchDocument.body.className = toLightThemeClassName(document.body.className);
 
     const clonedRoot = elementRoot.cloneNode(true) as HTMLElement;
     clonedRoot.setAttribute(MATCH_ROOT_ATTRIBUTE, '');
@@ -334,23 +327,26 @@ function buildVariableCss(usedVariables: Set<string>): string {
         return '';
     }
 
-    const computedRoots = [
-        getComputedStyle(document.documentElement),
-        getComputedStyle(document.body)
-    ];
     const resolvedVariables: string[] = [];
 
-    Array.from(usedVariables).forEach((variableName) => {
-        for (const styles of computedRoots) {
-            const value = styles.getPropertyValue(variableName).trim();
+    withLightThemeClasses(() => {
+        const computedRoots = [
+            getComputedStyle(document.documentElement),
+            getComputedStyle(document.body)
+        ];
 
-            if (!value) {
-                continue;
+        Array.from(usedVariables).forEach((variableName) => {
+            for (const styles of computedRoots) {
+                const value = styles.getPropertyValue(variableName).trim();
+
+                if (!value) {
+                    continue;
+                }
+
+                resolvedVariables.push(`    ${variableName}: ${value};`);
+                break;
             }
-
-            resolvedVariables.push(`    ${variableName}: ${value};`);
-            break;
-        }
+        });
     });
 
     if (resolvedVariables.length === 0) {
@@ -358,6 +354,21 @@ function buildVariableCss(usedVariables: Set<string>): string {
     }
 
     return `:root {\n${resolvedVariables.join('\n')}\n}`;
+}
+
+function withLightThemeClasses<T>(callback: () => T): T {
+    const previousHtmlClassName = document.documentElement.className;
+    const previousBodyClassName = document.body.className;
+
+    document.documentElement.className = toLightThemeClassName(previousHtmlClassName);
+    document.body.className = toLightThemeClassName(previousBodyClassName);
+
+    try {
+        return callback();
+    } finally {
+        document.documentElement.className = previousHtmlClassName;
+        document.body.className = previousBodyClassName;
+    }
 }
 
 function addRuleText(cssText: string, collectedRules: string[], seenRules: Set<string>): void {
@@ -372,11 +383,21 @@ function addRuleText(cssText: string, collectedRules: string[], seenRules: Set<s
 function applyRuntimePrintClassesToElement(bodyElement: HTMLElement, includeAppClasses = true): void {
     const classNames = [
         'obsidian-print',
-        includeAppClasses ? document.body.className : ''
+        includeAppClasses ? toLightThemeClassName(document.body.className) : ''
     ]
         .join(' ')
         .split(/\s+/)
         .filter(Boolean);
 
     bodyElement.className = Array.from(new Set(classNames)).join(' ');
+}
+
+function toLightThemeClassName(className: string): string {
+    const normalized = className.replace(THEME_CLASS_PATTERN, '').trim();
+    const classNames = [normalized, LIGHT_THEME_CLASS]
+        .join(' ')
+        .split(/\s+/)
+        .filter(Boolean);
+
+    return Array.from(new Set(classNames)).join(' ');
 }

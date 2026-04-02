@@ -20,6 +20,11 @@ export function createFrontmatterContent(file: TFile, app: App): HTMLElement | n
     const metadataContainer = document.createElement('section');
     metadataContainer.className = 'obsidian-print-frontmatter';
 
+    const headingElement = document.createElement('div');
+    headingElement.className = 'obsidian-print-frontmatter-heading';
+    headingElement.textContent = 'Properties';
+    metadataContainer.appendChild(headingElement);
+
     const metadataProperties = document.createElement('div');
     metadataProperties.className = 'obsidian-print-frontmatter-properties';
     metadataContainer.appendChild(metadataProperties);
@@ -27,6 +32,7 @@ export function createFrontmatterContent(file: TFile, app: App): HTMLElement | n
     entries.forEach(([key, value]) => {
         const propertyElement = document.createElement('div');
         propertyElement.className = 'obsidian-print-frontmatter-property';
+        propertyElement.classList.add(`obsidian-print-frontmatter-property--${getFrontmatterValueKind(value)}`);
 
         const keyElement = document.createElement('div');
         keyElement.className = 'obsidian-print-frontmatter-key';
@@ -44,25 +50,63 @@ export function createFrontmatterContent(file: TFile, app: App): HTMLElement | n
 }
 
 function appendFrontmatterValue(container: HTMLElement, value: unknown): void {
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        container.textContent = String(value);
+    if (typeof value === 'boolean') {
+        const booleanElement = document.createElement('span');
+        booleanElement.className = 'obsidian-print-frontmatter-boolean';
+
+        if (value) {
+            booleanElement.classList.add('is-checked');
+        }
+
+        const indicatorElement = document.createElement('span');
+        indicatorElement.className = 'obsidian-print-frontmatter-boolean-indicator';
+        indicatorElement.setAttribute('aria-hidden', 'true');
+
+        const textElement = document.createElement('span');
+        textElement.className = 'obsidian-print-frontmatter-boolean-text';
+        textElement.textContent = String(value);
+
+        booleanElement.append(indicatorElement, textElement);
+        container.appendChild(booleanElement);
+        return;
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+        container.appendChild(createInlineValueElement(value));
         return;
     }
 
     if (Array.isArray(value)) {
-        if (value.length === 0) {
+        const entries = value.filter((entry) => entry !== null && entry !== undefined);
+
+        if (entries.length === 0) {
             return;
         }
 
-        if (value.length === 1) {
-            appendFrontmatterValue(container, value[0]);
+        if (entries.every(isInlineValue)) {
+            const chipList = document.createElement('div');
+            chipList.className = 'obsidian-print-frontmatter-chip-list';
+
+            entries.forEach((entry) => {
+                const chipElement = document.createElement('span');
+                chipElement.className = 'obsidian-print-frontmatter-chip';
+                chipElement.appendChild(createInlineValueElement(entry));
+                chipList.appendChild(chipElement);
+            });
+
+            container.appendChild(chipList);
+            return;
+        }
+
+        if (entries.length === 1) {
+            appendFrontmatterValue(container, entries[0]);
             return;
         }
 
         const listElement = document.createElement('ul');
         listElement.className = 'obsidian-print-frontmatter-list';
 
-        value.forEach((entry) => {
+        entries.forEach((entry) => {
             const listItem = document.createElement('li');
             appendFrontmatterValue(listItem, entry);
             listElement.appendChild(listItem);
@@ -104,6 +148,56 @@ function appendFrontmatterValue(container: HTMLElement, value: unknown): void {
     }
 
     if (value !== null && value !== undefined) {
-        container.textContent = String(value);
+        container.appendChild(createInlineValueElement(String(value)));
     }
+}
+
+function createInlineValueElement(value: string | number | boolean): HTMLElement {
+    if (typeof value === 'boolean') {
+        const booleanWrapper = document.createElement('span');
+        appendFrontmatterValue(booleanWrapper, value);
+        return booleanWrapper;
+    }
+
+    if (typeof value === 'string' && isExternalLink(value)) {
+        const linkElement = document.createElement('a');
+        linkElement.className = 'obsidian-print-frontmatter-link';
+        linkElement.href = value;
+        linkElement.textContent = value;
+        return linkElement;
+    }
+
+    const textElement = document.createElement('span');
+    textElement.className = 'obsidian-print-frontmatter-text';
+    textElement.textContent = String(value);
+    return textElement;
+}
+
+function getFrontmatterValueKind(value: unknown): string {
+    if (typeof value === 'boolean') {
+        return 'boolean';
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+        return 'scalar';
+    }
+
+    if (Array.isArray(value)) {
+        const entries = value.filter((entry) => entry !== null && entry !== undefined);
+        return entries.every(isInlineValue) ? 'chip-list' : 'list';
+    }
+
+    if (value && typeof value === 'object') {
+        return 'object';
+    }
+
+    return 'scalar';
+}
+
+function isInlineValue(value: unknown): value is string | number | boolean {
+    return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+function isExternalLink(value: string): boolean {
+    return /^(https?:\/\/|mailto:)/i.test(value);
 }

@@ -1,5 +1,12 @@
 @media print {
 
+    html,
+    body {
+        color-scheme: light;
+        background: #fff !important;
+        color: #111827;
+    }
+
     body {
         margin: 20px;
     }
@@ -28,6 +35,10 @@
     .callout,
     .mermaid,
     .obsidian-print-frontmatter,
+    .obsidian-print-frontmatter-properties,
+    .obsidian-print-frontmatter-property,
+    .obsidian-print-frontmatter-object,
+    .obsidian-print-frontmatter-object-row,
     pre,
     blockquote,
     table,
@@ -69,6 +80,13 @@
         height: auto;
         overflow: visible;
         background: transparent;
+    }
+
+    .obsidian-print-frontmatter-value,
+    .obsidian-print-frontmatter-object-value,
+    .obsidian-print-frontmatter-link {
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     img {
