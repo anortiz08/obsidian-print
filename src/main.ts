@@ -86,13 +86,28 @@ export default class PrintPlugin extends Plugin {
             return;
         }
 
+        let customClasses: string[] = [];
+        if (this.settings.extraClasses) {
+            const fileExtraClasses: string | object = this.app
+                .metadataCache
+                .getFileCache(file)
+                ?.frontmatter
+                ?.cssClasses
+
+            if (typeof fileExtraClasses === "string") {
+                customClasses = [fileExtraClasses];
+            } else if (typeof fileExtraClasses === "object") {
+                customClasses = Object.values(fileExtraClasses)
+            }
+        }
+
         const content = await generatePreviewContent(file, this.settings.printTitle, this.app);
         if (!content) {
             return;
         }
 
         const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
-        await openPrintModal(content, this.settings, cssString);
+        await openPrintModal(file.basename, content, this.settings, cssString, customClasses);
     }
 
     async printSelection() {
@@ -114,7 +129,7 @@ export default class PrintPlugin extends Plugin {
         }
     
         const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
-        await openPrintModal(content, this.settings, cssString);
+        await openPrintModal(`${activeView.file?.basename} snippet`, content, this.settings, cssString);
     }
 
     async printFolder(folder?: TFolder) {
@@ -155,7 +170,8 @@ export default class PrintPlugin extends Plugin {
 
         const cssString = await generatePrintStyles(this.app, this.manifest, this.settings);
 
-        await openPrintModal(folderContent, this.settings, cssString);
+
+        await openPrintModal(folder?.name || "folder", folderContent, this.settings, cssString);
     }
 
     /**

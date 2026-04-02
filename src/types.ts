@@ -11,6 +11,7 @@ export interface PrintPluginSettings {
     hrPageBreaks: boolean;
     debugMode: boolean;
     usePreview: boolean;
+    extraClasses: boolean;
 }
 
 export const DEFAULT_SETTINGS: PrintPluginSettings = {
@@ -25,5 +26,6 @@ export const DEFAULT_SETTINGS: PrintPluginSettings = {
     combineFolderNotes: false,
     hrPageBreaks: false,
     debugMode: false,
-    usePreview: true
+    usePreview: true,
+    extraClasses: false,
 };
