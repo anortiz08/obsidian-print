@@ -29,7 +29,7 @@ vi.mock('../src/utils/getFolderByActiveFile', () => ({
 
 import PrintPlugin from '../src/main';
 import { DEFAULT_SETTINGS } from '../src/types';
-import { MarkdownView, TFile, TFolder } from 'obsidian';
+import { MarkdownView, Platform, TFile, TFolder } from 'obsidian';
 
 function createApp() {
     const app: any = {
@@ -85,9 +85,26 @@ function createMarkdownView(file: TFile, selection: string) {
     });
 }
 
+function getMockNotices(): string[] {
+    const globalWithNoticeStore = globalThis as typeof globalThis & {
+        __obsidianMockNotices?: string[];
+    };
+
+    if (!globalWithNoticeStore.__obsidianMockNotices) {
+        globalWithNoticeStore.__obsidianMockNotices = [];
+    }
+
+    return globalWithNoticeStore.__obsidianMockNotices;
+}
+
 describe('PrintPlugin cssclasses behavior', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        getMockNotices().length = 0;
+        Platform.isDesktop = true;
+        Platform.isMobile = false;
+        Platform.isDesktopApp = true;
+        Platform.isMobileApp = false;
         mocks.generatePrintStyles.mockResolvedValue('body { color: black; }');
     });
 
@@ -100,6 +117,21 @@ describe('PrintPlugin cssclasses behavior', () => {
         await plugin.onload();
 
         expect(plugin.settings.inheritNoteCssClasses).toBe(true);
+    });
+
+    it('shows a notice instead of printing on mobile', async () => {
+        Platform.isDesktop = false;
+        Platform.isMobile = true;
+        Platform.isDesktopApp = false;
+        Platform.isMobileApp = true;
+
+        const plugin = createPlugin();
+
+        await plugin.printNote();
+
+        expect(getMockNotices()).toContain('Printing is only supported on Obsidian desktop.');
+        expect(mocks.generatePreviewContent).not.toHaveBeenCalled();
+        expect(mocks.openPrintModal).not.toHaveBeenCalled();
     });
 
     it('applies note cssclasses when printing a note', async () => {

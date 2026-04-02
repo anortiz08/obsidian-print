@@ -1,6 +1,6 @@
 # Print
 
-The Print plugin adds printing tools to your Obsidian workspace. You can print the current note, a text selection, or all notes in a folder from the command palette, the printer ribbon, or the context menu. If you like it or find it useful, please consider giving it a [star ![GitHub Repo stars](https://img.shields.io/github/stars/marijnbent/obsidian-print?style=social)](https://github.com/marijnbent/obsidian-print) on GitHub.
+The Print plugin adds printing tools to your Obsidian desktop workspace. You can print the current note, a text selection, or all notes in a folder from the command palette, the printer ribbon, or the context menu. If you like it or find it useful, please consider giving it a [star ![GitHub Repo stars](https://img.shields.io/github/stars/marijnbent/obsidian-print?style=social)](https://github.com/marijnbent/obsidian-print) on GitHub.
 
 https://github.com/user-attachments/assets/5882f08c-19e6-46da-b808-608b95376979
 
@@ -11,7 +11,6 @@ https://github.com/user-attachments/assets/5882f08c-19e6-46da-b808-608b95376979
 - **Print the current note**: Trigger printing from the command palette, the printer ribbon, or by right-clicking a note.
 - **Print a selection**: Print only the selected text from the active editor.
 - **Print all notes in a folder**: Right-click on a folder or use the command palette to print all markdown notes in that folder.
-- **Best-effort mobile support**: The plugin can run on Obsidian mobile and will use the platform print/share sheet when available.
 
 You can also add a shortcut to the print action for even quicker access.
 
@@ -34,6 +33,8 @@ on [https://www.buymeacoffee.com/marijnbent](https://www.buymeacoffee.com/marijn
 2. Click on **Browse** and search for **Print**.
 3. Click **Install** to add the plugin to your Obsidian setup.
 4. Once installed, enable the plugin and optionally go to the settings page.
+
+Print is currently supported on Obsidian desktop only.
 
 If you print often, you probably want to add a shortcut to one or more print commands. Go to **Settings** > **Hotkeys**, search for `print`, and bind your preferred shortcuts.
 
@@ -58,11 +59,3 @@ In the settings, you can optionally hide the title, and when **Normalize style**
 To further customize the appearance of your printed notes, you can create a `print.css` snippet in `.obsidian/snippets` and enable it from the plugin settings once Obsidian detects it. The printed document's body contains the `obsidian-print` class. Be sure to either wrap your CSS in `@media print` or prefix your print-specific CSS with `.obsidian-print` so it only applies to printed content. If you enable **Inherit note `cssclasses`**, note-level Obsidian classes will be available in the printed output as well. Theme styles for code blocks and MathJax are also carried into the print document when needed, unless you enable **Normalize style** to use the plugin's neutral fallback styling instead. You can view the default styles [in this file](/styles.css). Every individual note contains the `obsidian-print-note` class.
 
 If you have trouble with the styling, enable Debug Mode to open an inspection window for the generated print document.
-
-## Mobile support
-
-Print supports Obsidian mobile on a best-effort basis. The same note, selection, and folder commands are available, but the final print behavior depends on the platform's embedded browser and native print/share capabilities.
-
-- On desktop, **Debug mode** can open an inspection window for the generated print HTML.
-- On mobile, Debug mode has no effect beyond showing a notice, because Obsidian mobile does not expose the Electron debug window APIs.
-- If your device opens a share sheet instead of a print dialog, that is expected platform behavior.
