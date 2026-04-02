@@ -216,6 +216,44 @@ describe('PrintPlugin cssclasses behavior', () => {
         );
     });
 
+    it('sorts folder printouts like the vault view, with the folder note first', async () => {
+        const app = createApp();
+        const folder = createFolder('Projects');
+        const zetaFile = createFile('Projects/Zeta.md', 'Zeta', folder);
+        const quotedTodoFile = createFile('Projects/“ToDo List…”.md', '“ToDo List…”', folder);
+        const folderNote = createFile('Projects/Projects.md', 'Projects', folder);
+        folder.children = [zetaFile, folderNote, quotedTodoFile];
+
+        const zetaContent = document.createElement('div');
+        const todoContent = document.createElement('div');
+        const folderNoteContent = document.createElement('div');
+
+        mocks.generatePreviewContent.mockImplementation(async (file: TFile) => {
+            if (file === folderNote) {
+                return folderNoteContent;
+            }
+
+            if (file === quotedTodoFile) {
+                return todoContent;
+            }
+
+            return zetaContent;
+        });
+
+        const plugin = createPlugin(app);
+        plugin.settings = {
+            ...DEFAULT_SETTINGS
+        };
+
+        await plugin.printFolder(folder);
+
+        expect(mocks.generatePreviewContent.mock.calls.map(([file]) => file)).toEqual([
+            folderNote,
+            quotedTodoFile,
+            zetaFile
+        ]);
+    });
+
     it('prints the rendered base view instead of markdown source for active base files', async () => {
         const app = createApp();
         const folder = createFolder('Dashboards');

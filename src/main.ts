@@ -8,6 +8,12 @@ import { getFolderByActiveFile } from './utils/getFolderByActiveFile';
 import { getNoteCssClasses } from './utils/getNoteCssClasses';
 import { generateViewContent } from './utils/generateViewContent';
 
+const folderPrintOrderCollator = new Intl.Collator(undefined, {
+    numeric: true,
+    sensitivity: 'base',
+    ignorePunctuation: true
+});
+
 interface ActiveFileViewLike {
     containerEl?: HTMLElement;
     file?: TFile | null;
@@ -179,7 +185,7 @@ export default class PrintPlugin extends Plugin {
             return;
         }
 
-        const files = activeFolder.children.filter((file) => file instanceof TFile && file.extension === 'md') as TFile[];
+        const files = this.getSortedMarkdownFiles(activeFolder);
 
         if (files.length === 0) {
             new Notice('No markdown files found in the folder.');
@@ -252,5 +258,31 @@ export default class PrintPlugin extends Plugin {
 
         const activeLeaf = (this.app.workspace as unknown as { activeLeaf?: { view?: ActiveFileViewLike } }).activeLeaf;
         return activeLeaf?.view ?? null;
+    }
+
+    private getSortedMarkdownFiles(folder: TFolder): TFile[] {
+        return folder.children
+            .filter((file): file is TFile => file instanceof TFile && file.extension === 'md')
+            .sort((left, right) => this.compareFolderPrintOrder(folder, left, right));
+    }
+
+    private compareFolderPrintOrder(folder: TFolder, left: TFile, right: TFile): number {
+        const leftIsFolderNote = this.isFolderNote(folder, left);
+        const rightIsFolderNote = this.isFolderNote(folder, right);
+
+        if (leftIsFolderNote !== rightIsFolderNote) {
+            return leftIsFolderNote ? -1 : 1;
+        }
+
+        const titleComparison = folderPrintOrderCollator.compare(left.basename, right.basename);
+        if (titleComparison !== 0) {
+            return titleComparison;
+        }
+
+        return folderPrintOrderCollator.compare(left.path, right.path);
+    }
+
+    private isFolderNote(folder: TFolder, file: TFile): boolean {
+        return folderPrintOrderCollator.compare(file.basename, folder.name) === 0;
     }
 }
