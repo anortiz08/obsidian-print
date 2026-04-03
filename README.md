@@ -1,6 +1,6 @@
 # Print
 
-The Print plugin adds printing tools to your Obsidian desktop workspace. You can print the current note, a text selection, or all notes in a folder from the command palette, the printer ribbon, or the context menu. If you like it or find it useful, please consider giving it a [star ![GitHub Repo stars](https://img.shields.io/github/stars/marijnbent/obsidian-print?style=social)](https://github.com/marijnbent/obsidian-print) on GitHub.
+The Print plugin adds printing tools to your Obsidian workspace. You can print the current note, a text selection, or all notes in a folder from the command palette, the printer ribbon, or the context menu. If you like it or find it useful, please consider giving it a [star ![GitHub Repo stars](https://img.shields.io/github/stars/marijnbent/obsidian-print?style=social)](https://github.com/marijnbent/obsidian-print) on GitHub.
 
 https://github.com/user-attachments/assets/5882f08c-19e6-46da-b808-608b95376979
 
@@ -33,8 +33,6 @@ on [https://www.buymeacoffee.com/marijnbent](https://www.buymeacoffee.com/marijn
 2. Click on **Browse** and search for **Print**.
 3. Click **Install** to add the plugin to your Obsidian setup.
 4. Once installed, enable the plugin and optionally go to the settings page.
-
-Print is currently supported on Obsidian desktop only.
 
 If you print often, you probably want to add a shortcut to one or more print commands. Go to **Settings** > **Hotkeys**, search for `print`, and bind your preferred shortcuts.
 

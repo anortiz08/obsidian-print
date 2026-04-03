@@ -1,4 +1,4 @@
-import { Plugin, Notice, Platform, TFile, TFolder, MarkdownView } from 'obsidian';
+import { Plugin, Notice, TFile, TFolder, MarkdownView } from 'obsidian';
 import { PrintSettingTab } from './settings';
 import { PrintPluginSettings, DEFAULT_SETTINGS } from './types';
 import { openPrintModal } from './utils/printModal';
@@ -112,10 +112,6 @@ export default class PrintPlugin extends Plugin {
     }
 
     async printNote(file?: TFile) {
-        if (!this.ensurePrintingSupported()) {
-            return;
-        }
-
         const resolvedFile = await this.resolveRequestedFile(file);
 
         if (!resolvedFile) {
@@ -132,10 +128,6 @@ export default class PrintPlugin extends Plugin {
     }
 
     async printSelection() {
-        if (!this.ensurePrintingSupported()) {
-            return;
-        }
-
         const printableSelection = await this.resolvePrintableSelection();
         if (!printableSelection) {
             return;
@@ -145,10 +137,6 @@ export default class PrintPlugin extends Plugin {
     }
 
     async printFolder(folder?: TFolder) {
-        if (!this.ensurePrintingSupported()) {
-            return;
-        }
-
         if (!folder) {
             await this.saveActiveFile();
         }
@@ -186,15 +174,6 @@ export default class PrintPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
-    }
-
-    private ensurePrintingSupported(): boolean {
-        if (!Platform.isMobileApp) {
-            return true;
-        }
-
-        new Notice('Printing is only supported on Obsidian desktop.');
-        return false;
     }
 
     private async resolveRequestedFile(file?: TFile): Promise<TFile | null> {

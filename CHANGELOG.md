@@ -1,8 +1,7 @@
 # Changelog
 
-## 0.5.0 - 2026-04-02
+## 0.5.0 - 2026-04-03
 
-- Removed Obsidian mobile printing support and marked the plugin as desktop-only.
 - Improved printed properties/frontmatter styling to better match Obsidian's properties UI instead of a generic export table.
 - Added richer frontmatter rendering for booleans, chip-style arrays, nested objects, and external links in printed output.
 - Made printed properties more compact so they consume less page space.
