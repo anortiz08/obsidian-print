@@ -187,8 +187,8 @@ export default class PrintPlugin extends Plugin {
     }
 
     private async resolvePrintableFileContent(file: TFile): Promise<ResolvedPrintContent | void> {
-        if (file.extension === 'base') {
-            const content = this.getPrintableBaseContent(file);
+        if (file.extension !== 'md') {
+            const content = this.getPrintableNonMarkdownViewContent(file);
             return content ? { content } : undefined;
         }
 
@@ -297,11 +297,11 @@ export default class PrintPlugin extends Plugin {
         return getNoteCssClasses(this.app, file);
     }
 
-    private getPrintableBaseContent(file: TFile): HTMLElement | void {
+    private getPrintableNonMarkdownViewContent(file: TFile): HTMLElement | void {
         const activeView = this.getActiveFileView();
 
         if (!activeView || activeView.file !== file) {
-            new Notice('Open the base first to print its rendered view.');
+            new Notice('Open the file first to print its rendered view.');
             return;
         }
 

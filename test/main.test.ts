@@ -339,6 +339,66 @@ describe('PrintPlugin cssclasses behavior', () => {
         expect((renderedContent as HTMLElement).textContent).toContain('Book list');
     });
 
+    it('prints the rendered image view instead of reading png bytes as markdown', async () => {
+        const app = createApp();
+        const folder = createFolder('Assets');
+        const file = createFile('Assets/diagram.png', 'diagram', folder);
+        const viewContainer = document.createElement('div');
+        const contentEl = document.createElement('div');
+        contentEl.className = 'view-content';
+        const imageEl = document.createElement('img');
+        imageEl.setAttribute('src', 'app://local/Assets/diagram.png');
+        imageEl.setAttribute('alt', 'diagram');
+        contentEl.appendChild(imageEl);
+        viewContainer.appendChild(contentEl);
+
+        app.workspace.getActiveFile.mockReturnValue(file);
+        app.workspace.getActiveFileView.mockReturnValue({
+            file,
+            containerEl: viewContainer
+        });
+
+        const plugin = createPlugin(app);
+        plugin.settings = {
+            ...DEFAULT_SETTINGS,
+            printTitle: true
+        };
+
+        await plugin.printNote(file);
+
+        expect(mocks.generatePreviewContent).not.toHaveBeenCalled();
+        expect(mocks.openPrintModal).toHaveBeenCalledWith(
+            'diagram',
+            expect.any(HTMLDivElement),
+            plugin.settings,
+            'body { color: black; }'
+        );
+
+        const [, renderedContent] = mocks.openPrintModal.mock.calls[0];
+        expect((renderedContent as HTMLElement).textContent).toContain('diagram');
+        expect((renderedContent as HTMLElement).querySelector('img')?.getAttribute('src')).toBe('app://local/Assets/diagram.png');
+    });
+
+    it('asks to open a non-markdown file before printing when no rendered view is active', async () => {
+        const app = createApp();
+        const folder = createFolder('Assets');
+        const file = createFile('Assets/diagram.png', 'diagram', folder);
+
+        app.workspace.getActiveFile.mockReturnValue(null);
+        app.workspace.getActiveFileView.mockReturnValue(null);
+
+        const plugin = createPlugin(app);
+        plugin.settings = {
+            ...DEFAULT_SETTINGS
+        };
+
+        await plugin.printNote(file);
+
+        expect(mocks.generatePreviewContent).not.toHaveBeenCalled();
+        expect(mocks.openPrintModal).not.toHaveBeenCalled();
+        expect(getMockNotices()).toContain('Open the file first to print its rendered view.');
+    });
+
     it('prints the rendered markdown preview for the active note when available', async () => {
         const app = createApp();
         const folder = createFolder('Notes');

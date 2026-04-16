@@ -4,7 +4,7 @@
 
 When preparing a release for this plugin:
 
-1. Update `CHANGELOG.md` with a new version heading and the user-visible changes.
+1. Replace `CHANGELOG.md` with a single new version heading for the release and list only the user-visible changes in that most recent update.
 2. Bump `package.json`, `manifest.json`, and `versions.json`.
    You can use `npm run version -- <version>` for this repo.
 3. Run `npm test` and `npm run build`.
@@ -15,6 +15,7 @@ When preparing a release for this plugin:
 
 ## Notes
 
+- Keep `CHANGELOG.md` limited to the latest release entry only.
 - Keep release tags in the `x.y.z` format used by the existing history.
 - Do not create the tag until the changelog and version files are updated.
 - If the repo already contains unrelated user changes, do not revert them; release only after confirming the intended scope.
