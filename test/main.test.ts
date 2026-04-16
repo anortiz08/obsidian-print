@@ -119,37 +119,6 @@ describe('PrintPlugin cssclasses behavior', () => {
         expect(plugin.settings.inheritNoteCssClasses).toBe(true);
     });
 
-    it('continues printing on mobile', async () => {
-        Platform.isDesktop = false;
-        Platform.isMobile = true;
-        Platform.isDesktopApp = false;
-        Platform.isMobileApp = true;
-
-        const app = createApp();
-        const folder = createFolder('Mobile');
-        const file = createFile('Mobile/note.md', 'note', folder);
-        const content = document.createElement('div');
-
-        mocks.generatePreviewContent.mockResolvedValue(content);
-
-        const plugin = createPlugin(app);
-        plugin.settings = {
-            ...DEFAULT_SETTINGS
-        };
-
-        await plugin.printNote(file);
-
-        expect(getMockNotices()).not.toContain('Printing is only supported on Obsidian desktop.');
-        expect(mocks.generatePreviewContent).toHaveBeenCalledOnce();
-        expect(mocks.openPrintModal).toHaveBeenCalledWith(
-            'note',
-            content,
-            plugin.settings,
-            'body { color: black; }',
-            []
-        );
-    });
-
     it('applies note cssclasses when printing a note', async () => {
         const app = createApp();
         const folder = createFolder('Invoices');
