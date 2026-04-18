@@ -1,3 +1,5 @@
+import { syncPrintableCloneState } from './syncPrintableClone';
+
 const TARGET_SELECTOR_PATTERNS = [
     /mjx-/i,
     /mathjax/i,
@@ -88,7 +90,9 @@ export function createDebugPrintHtml(
     if (bodyClasses.length > 0) {
         bodyElement.classList.add(...bodyClasses);
     }
-    bodyElement.appendChild(content.cloneNode(true));
+    const clonedContent = content.cloneNode(true) as HTMLElement;
+    syncPrintableCloneState(content, clonedContent);
+    bodyElement.appendChild(clonedContent);
 
     htmlElement.appendChild(bodyElement);
 

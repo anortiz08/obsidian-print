@@ -6,6 +6,7 @@ import {
     getTargetedRuntimePrintCss
 } from './runtimePrintStyles';
 import { openDebugPrintPreview } from './printEnvironment';
+import { syncPrintableCloneState } from './syncPrintableClone';
 
 /**
  * Generate the HTML with the content to be printed. Use Printd to print.
@@ -62,7 +63,11 @@ export async function openPrintModal(
         restoreDocumentTitle();
     });
 
-    d.print(content, [combinedCssString], undefined, ({ iframe, launchPrint }) => {
+    d.print(content, [combinedCssString], undefined, ({ iframe, element, launchPrint }) => {
+        if (element instanceof HTMLElement) {
+            syncPrintableCloneState(content, element);
+        }
+
         if (iframe.contentDocument) {
             applyRuntimePrintClasses(iframe.contentDocument, includeThemeStyles);
             iframe.contentDocument.title = title;

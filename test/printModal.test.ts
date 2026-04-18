@@ -3,14 +3,19 @@ import { Platform } from 'obsidian';
 
 const mocks = vi.hoisted(() => {
     const launchPrint = vi.fn();
-    const print = vi.fn((_content, _styles, _scripts, callback) => {
+    let lastPrintedElement: HTMLElement | null = null;
+    const print = vi.fn((content, _styles, _scripts, callback) => {
         const iframeDocument = document.implementation.createHTMLDocument('Print');
+        const element = content.cloneNode(true) as HTMLElement;
+        lastPrintedElement = element;
+        iframeDocument.body.appendChild(element);
         const iframe = {
             contentDocument: iframeDocument
         };
 
         callback?.({
             iframe,
+            element,
             launchPrint
         });
     });
@@ -25,7 +30,11 @@ const mocks = vi.hoisted(() => {
     return {
         Printd,
         print,
-        launchPrint
+        launchPrint,
+        getLastPrintedElement: () => lastPrintedElement,
+        resetLastPrintedElement: () => {
+            lastPrintedElement = null;
+        }
     };
 });
 
@@ -51,6 +60,7 @@ function getMockNotices(): string[] {
 describe('openPrintModal', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.resetLastPrintedElement();
         getMockNotices().length = 0;
         Platform.isDesktop = true;
         Platform.isMobile = false;
@@ -121,5 +131,31 @@ describe('openPrintModal', () => {
         expect(loadURL).toHaveBeenCalledOnce();
         expect(openDevTools).toHaveBeenCalledOnce();
         expect(mocks.launchPrint).toHaveBeenCalledOnce();
+    });
+
+    it('preserves canvas-rendered content in the printable clone', async () => {
+        const content = document.createElement('div');
+        const canvas = document.createElement('canvas');
+        canvas.className = 'pdf-page';
+        canvas.setAttribute('aria-label', 'Page 1');
+
+        Object.defineProperty(canvas, 'toDataURL', {
+            value: vi.fn(() => 'data:image/png;base64,pdf-page')
+        });
+
+        content.appendChild(canvas);
+
+        await openPrintModal(
+            'PDF note',
+            content,
+            DEFAULT_SETTINGS,
+            'body { color: black; }'
+        );
+
+        const printedImage = mocks.getLastPrintedElement()?.querySelector('img');
+        expect(printedImage?.getAttribute('src')).toBe('data:image/png;base64,pdf-page');
+        expect(printedImage?.className).toBe('pdf-page');
+        expect(printedImage?.getAttribute('aria-label')).toBe('Page 1');
+        expect(mocks.getLastPrintedElement()?.querySelector('canvas')).toBeNull();
     });
 });
