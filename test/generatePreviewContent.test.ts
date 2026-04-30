@@ -15,7 +15,12 @@ describe('generatePreviewContent', () => {
         const file = createFile();
         const app = {
             vault: {
-                cachedRead: async () => 'Body copy'
+                cachedRead: async () => `---
+title: Quarterly packet
+aliases:
+  - Q2 packet
+---
+Body copy`
             },
             metadataCache: {
                 getFileCache: () => ({
@@ -55,6 +60,7 @@ describe('generatePreviewContent', () => {
         expect(content?.textContent).toContain('Northwind Press');
         expect(content?.textContent).toContain('Body copy');
         expect(content?.textContent).not.toContain('position');
+        expect(content?.textContent).not.toContain('aliases:');
     });
 
     it('renders mermaid code fences into diagrams', async () => {

@@ -7,7 +7,6 @@ import { generatePrintStyles } from './utils/generatePrintStyles';
 import { getFolderByActiveFile } from './utils/getFolderByActiveFile';
 import { getNoteCssClasses } from './utils/getNoteCssClasses';
 import { generateViewContent } from './utils/generateViewContent';
-import { createFrontmatterContent } from './utils/frontmatterContent';
 
 const folderPrintOrderCollator = new Intl.Collator(undefined, {
     numeric: true,
@@ -19,14 +18,6 @@ interface ActiveFileViewLike {
     containerEl?: HTMLElement;
     file?: TFile | null;
     getViewType?: () => string;
-}
-
-interface ActiveMarkdownViewLike extends ActiveFileViewLike {
-    getMode?: () => 'source' | 'preview';
-    previewMode?: {
-        containerEl?: HTMLElement;
-        rerender?: (full?: boolean) => void;
-    };
 }
 
 interface ResolvedPrintContent {
@@ -223,7 +214,7 @@ export default class PrintPlugin extends Plugin {
     }
 
     private async resolvePrintableMarkdownFileContent(file: TFile): Promise<ResolvedPrintContent | void> {
-        const content = this.getPrintableMarkdownViewContent(file) ?? await generatePreviewContent(
+        const content = await generatePreviewContent(
             file,
             this.settings.printTitle,
             this.app,
@@ -308,53 +299,6 @@ export default class PrintPlugin extends Plugin {
         return generateViewContent(activeView, {
             title: this.settings.printTitle ? file.basename : undefined
         });
-    }
-
-    private getPrintableMarkdownViewContent(file: TFile): HTMLElement | void {
-        if (file.extension !== 'md') {
-            return;
-        }
-
-        const activeView = this.getActiveFileView() as ActiveMarkdownViewLike | null;
-
-        if (!activeView || activeView.file !== file) {
-            return;
-        }
-
-        if (activeView.getMode?.() !== 'preview') {
-            return;
-        }
-
-        const previewContainer = activeView.previewMode?.containerEl;
-        if (!previewContainer || !this.hasPrintablePreviewContent(previewContainer)) {
-            return;
-        }
-
-        activeView.previewMode?.rerender?.(true);
-
-        const leadingElements: HTMLElement[] = [];
-        if (this.settings.printFrontmatter) {
-            const frontmatterContent = createFrontmatterContent(file, this.app);
-            if (frontmatterContent) {
-                leadingElements.push(frontmatterContent);
-            }
-        }
-
-        return generateViewContent(
-            { containerEl: previewContainer },
-            {
-                leadingElements,
-                title: this.settings.printTitle ? file.basename : undefined
-            }
-        );
-    }
-
-    private hasPrintablePreviewContent(previewContainer: HTMLElement): boolean {
-        if (previewContainer.textContent?.trim()) {
-            return true;
-        }
-
-        return previewContainer.querySelector('*') !== null;
     }
 
     private getActiveFileView(): ActiveFileViewLike | null {

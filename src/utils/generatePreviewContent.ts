@@ -1,4 +1,4 @@
-import { MarkdownRenderer, TFile, Component, Notice, App, loadMermaid } from 'obsidian';
+import { MarkdownRenderer, TFile, Component, Notice, App, loadMermaid, getFrontMatterInfo } from 'obsidian';
 import { createFrontmatterContent } from './frontmatterContent';
 
 /**
@@ -43,6 +43,7 @@ export async function generatePreviewContent(
 
         if (input instanceof TFile) {
             markdownContent = await app.vault.cachedRead(input);
+            markdownContent = stripFrontmatter(markdownContent);
             sourcePath = input.path;
         } else {
             markdownContent = input;
@@ -66,6 +67,16 @@ export async function generatePreviewContent(
         console.error('Preview generation error:', error);
         return;
     }
+}
+
+function stripFrontmatter(markdownContent: string): string {
+    const frontmatterInfo = getFrontMatterInfo(markdownContent);
+
+    if (!frontmatterInfo.exists) {
+        return markdownContent;
+    }
+
+    return markdownContent.slice(frontmatterInfo.contentStart);
 }
 
 let mermaidRenderCount = 0;

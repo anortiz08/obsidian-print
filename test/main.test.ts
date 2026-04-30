@@ -368,10 +368,12 @@ describe('PrintPlugin cssclasses behavior', () => {
         expect(getMockNotices()).toContain('Open the file first to print its rendered view.');
     });
 
-    it('prints the rendered markdown preview for the active note when available', async () => {
+    it('renders markdown notes from source even when a reading view is active', async () => {
         const app = createApp();
         const folder = createFolder('Notes');
         const file = createFile('Notes/daily.md', 'daily', folder);
+        const content = document.createElement('div');
+        content.textContent = 'Rendered from markdown source';
         const previewContainer = document.createElement('div');
         previewContainer.className = 'markdown-reading-view';
         previewContainer.innerHTML = `
@@ -390,6 +392,7 @@ describe('PrintPlugin cssclasses behavior', () => {
                 rerender: vi.fn()
             }
         });
+        mocks.generatePreviewContent.mockResolvedValue(content);
 
         const plugin = createPlugin(app);
         plugin.settings = {
@@ -399,19 +402,19 @@ describe('PrintPlugin cssclasses behavior', () => {
 
         await plugin.printNote(file);
 
-        expect(mocks.generatePreviewContent).not.toHaveBeenCalled();
+        expect(mocks.generatePreviewContent).toHaveBeenCalledWith(
+            file,
+            true,
+            app,
+            false
+        );
         expect(mocks.openPrintModal).toHaveBeenCalledWith(
             'daily',
-            expect.any(HTMLDivElement),
+            content,
             plugin.settings,
             'body { color: black; }',
             []
         );
-
-        const [, renderedContent] = mocks.openPrintModal.mock.calls[0];
-        expect((renderedContent as HTMLElement).textContent).toContain('daily');
-        expect((renderedContent as HTMLElement).textContent).toContain('Rendered preview content');
-        expect((renderedContent as HTMLElement).querySelector('.inline-title')).toBeFalsy();
     });
 
     it('falls back to markdown rendering when the active note is not in preview mode', async () => {

@@ -113,6 +113,36 @@ export async function loadMermaid(): Promise<{
     };
 }
 
+export function getFrontMatterInfo(content: string): {
+    exists: boolean;
+    frontmatter: string;
+    from: number;
+    to: number;
+    contentStart: number;
+} {
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+
+    if (!match) {
+        return {
+            exists: false,
+            frontmatter: '',
+            from: 0,
+            to: 0,
+            contentStart: 0
+        };
+    }
+
+    const frontmatterStart = content.indexOf(match[1]);
+
+    return {
+        exists: true,
+        frontmatter: match[1],
+        from: frontmatterStart,
+        to: frontmatterStart + match[1].length,
+        contentStart: match[0].length
+    };
+}
+
 export class PluginSettingTab {
     app: unknown;
     plugin: unknown;
