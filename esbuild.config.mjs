@@ -43,15 +43,8 @@ const buildOptions = {
 if (prod) {
 	esbuild.build(buildOptions).catch(() => process.exit(1));
 } else {
-	esbuild.build({
-		...buildOptions,
-		watch: {
-			onRebuild(error, result) {
-				if (error) console.error('watch build failed:', error)
-				else console.log('watch build succeeded:', result)
-			},
-		},
-	}).then(result => {
+	esbuild.context(buildOptions).then(context => {
+		context.watch();
 		console.log("watching...");
 	}).catch(() => process.exit(1));
 }

@@ -165,9 +165,10 @@ describe('getTargetedRuntimePrintCss', () => {
 
         try {
             const cssText = getTargetedRuntimePrintCss(printedRoot);
+            const compactCssText = cssText.replace(/\s+/g, '');
 
             expect(cssText).toContain('.markdown-reading-view h1');
-            expect(cssText).toContain('--text-normal: rgb(17, 24, 39);');
+            expect(compactCssText).toContain('--text-normal:rgb(17,24,39);');
             expect(cssText).not.toContain('--text-normal: ghostwhite;');
         } finally {
             styleElement.remove();

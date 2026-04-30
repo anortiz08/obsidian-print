@@ -21,11 +21,13 @@ const mocks = vi.hoisted(() => {
     });
     const onBeforePrint = vi.fn();
     const onAfterPrint = vi.fn();
-    const Printd = vi.fn().mockImplementation(() => ({
-        onBeforePrint,
-        onAfterPrint,
-        print
-    }));
+    const Printd = vi.fn().mockImplementation(function Printd() {
+        return {
+            onBeforePrint,
+            onAfterPrint,
+            print
+        };
+    });
 
     return {
         Printd,
@@ -101,13 +103,15 @@ describe('openPrintModal', () => {
                 callback();
             }
         });
-        const BrowserWindow = vi.fn().mockImplementation(() => ({
-            loadURL,
-            webContents: {
-                on: onDidFinishLoad,
-                openDevTools
-            }
-        }));
+        const BrowserWindow = vi.fn().mockImplementation(function BrowserWindow() {
+            return {
+                loadURL,
+                webContents: {
+                    on: onDidFinishLoad,
+                    openDevTools
+                }
+            };
+        });
         const requireSpy = vi.fn(() => ({
             remote: {
                 BrowserWindow
