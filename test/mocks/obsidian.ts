@@ -97,6 +97,13 @@ export const MarkdownRenderer = {
             return;
         }
 
+        if (markdown.includes('[native-metadata-container]')) {
+            const metadataContainer = document.createElement('div');
+            metadataContainer.className = 'metadata-container';
+            metadataContainer.textContent = 'Native properties';
+            container.appendChild(metadataContainer);
+        }
+
         const paragraph = document.createElement('p');
         paragraph.textContent = markdown;
         container.appendChild(paragraph);

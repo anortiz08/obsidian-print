@@ -87,7 +87,7 @@ flowchart TD
         expect(content?.querySelector('pre code.language-mermaid')).toBeFalsy();
     });
 
-    it('marks rendered content with Obsidian preview classes for theme style reuse', async () => {
+    it('marks rendered content without using live preview pane classes', async () => {
         const file = createFile();
         const app = {
             vault: {
@@ -102,7 +102,25 @@ flowchart TD
 
         expect(content?.classList.contains('obsidian-print-note')).toBe(true);
         expect(content?.classList.contains('markdown-rendered')).toBe(true);
-        expect(content?.classList.contains('markdown-reading-view')).toBe(true);
-        expect(content?.classList.contains('markdown-preview-view')).toBe(true);
+        expect(content?.classList.contains('markdown-reading-view')).toBe(false);
+        expect(content?.classList.contains('markdown-preview-view')).toBe(false);
+    });
+
+    it('removes Obsidian native metadata from rendered print content', async () => {
+        const file = createFile();
+        const app = {
+            vault: {
+                cachedRead: async () => '[native-metadata-container]\nBody copy'
+            },
+            metadataCache: {
+                getFileCache: () => undefined
+            }
+        };
+
+        const content = await generatePreviewContent(file, false, app as never, false);
+
+        expect(content?.querySelector('.metadata-container')).toBeFalsy();
+        expect(content?.textContent).not.toContain('Native properties');
+        expect(content?.textContent).toContain('Body copy');
     });
 });

@@ -18,9 +18,7 @@ export async function generatePreviewContent(
     const content = createDiv();
     content.addClass(
         'obsidian-print-note',
-        'markdown-rendered',
-        'markdown-reading-view',
-        'markdown-preview-view'
+        'markdown-rendered'
     );
 
     try {
@@ -58,6 +56,7 @@ export async function generatePreviewContent(
             new Component()
         );
 
+        removeNativeMetadataContainers(content);
         await renderMermaidBlocks(content);
 
         return content;
@@ -69,7 +68,19 @@ export async function generatePreviewContent(
     }
 }
 
+function removeNativeMetadataContainers(content: HTMLElement): void {
+    content.querySelectorAll('.metadata-container').forEach((element) => {
+        element.remove();
+    });
+}
+
 function stripFrontmatter(markdownContent: string): string {
+    const fallbackFrontmatterMatch = markdownContent.match(/^---(?:\r?\n)[\s\S]*?(?:\r?\n)---(?:\r?\n|$)/);
+
+    if (fallbackFrontmatterMatch) {
+        return markdownContent.slice(fallbackFrontmatterMatch[0].length);
+    }
+
     const frontmatterInfo = getFrontMatterInfo(markdownContent);
 
     if (!frontmatterInfo.exists) {
