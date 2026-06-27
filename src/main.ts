@@ -262,12 +262,13 @@ export default class PrintPlugin extends Plugin {
                 printableContent.content,
                 this.settings,
                 cssString,
-                printableContent.bodyClasses
+                printableContent.bodyClasses,
+                this.app
             );
             return;
         }
 
-        await openPrintModal(title, printableContent.content, this.settings, cssString);
+        await openPrintModal(title, printableContent.content, this.settings, cssString, [], this.app);
     }
 
     private applyNotePrintClasses(content: HTMLElement, file?: TFile | null): string[] {
