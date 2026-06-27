@@ -63,6 +63,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title="$TAG" \
+              --notes-file=release-notes.md
+          fi
+
           gh release upload "$TAG" main.js manifest.json styles.css --clobber
 
           gh release edit "$TAG" \
