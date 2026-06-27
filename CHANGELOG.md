@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.6 - 2026-06-27
+
+- Fixed Android printing: the note now opens directly in the device's default browser after saving, where the browser's native print/share menu can be used.
+
 ## 0.5.5 - 2026-06-27
 
 - Added mobile printing support.
