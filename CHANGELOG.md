@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.5 - 2026-06-27
+
+- Added mobile printing support.
+- On iOS, printing uses the native AirPrint dialog via WKWebView.
+- On Android, the note is shared as an HTML file via the system share sheet; falls back to saving an HTML file to the vault root if file sharing is unavailable.
+
 ## 0.5.4 - 2026-04-30
 
 - Fixed themed property printing adding a blank first page.
