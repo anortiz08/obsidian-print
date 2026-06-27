@@ -1,5 +1,5 @@
 import { App, Notice, PluginManifest } from "obsidian";
-import { PrintPluginSettings } from "src/types";
+import { PrintPluginSettings } from "../types";
 import { NORMALIZED_PRINT_STYLES } from "./normalizedPrintStyles";
 
 interface CustomCssLike {
