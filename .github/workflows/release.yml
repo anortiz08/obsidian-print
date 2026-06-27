@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "*"
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -13,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Use Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: "npm"
@@ -31,6 +33,13 @@ jobs:
         run: |
           tag="${GITHUB_REF#refs/tags/}"
 
+          # When triggered by a release event, derive tag from the release tag name
+          if [ -z "$tag" ] || [ "$tag" = "refs/heads/" ]; then
+            tag="${{ github.event.release.tag_name }}"
+          fi
+
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+
           awk -v tag="$tag" '
             $0 ~ "^## " tag "([[:space:]]-|$)" { capture = 1; next }
             capture && /^## / { exit }
@@ -42,19 +51,14 @@ jobs:
             exit 1
           fi
 
-      - name: Create or update release
+      - name: Upload release assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
+          tag="$TAG"
 
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release edit "$tag" \
-              --title="$tag" \
-              --notes-file=release-notes.md
-          else
-            gh release create "$tag" \
-              --title="$tag" \
-              --notes-file=release-notes.md \
-              main.js manifest.json styles.css
-          fi
+          gh release upload "$tag" main.js manifest.json styles.css --clobber
+
+          gh release edit "$tag" \
+            --title="$tag" \
+            --notes-file=release-notes.md
