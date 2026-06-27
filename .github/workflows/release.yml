@@ -6,6 +6,11 @@ on:
       - "*"
   release:
     types: [published, edited]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and attach assets to"
+        required: true
 
 permissions:
   contents: write
@@ -16,6 +21,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Resolve tag name
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            echo "TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
+          else
+            echo "TAG=${{ inputs.tag }}" >> "$GITHUB_ENV"
+          fi
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -31,23 +48,14 @@ jobs:
 
       - name: Extract release notes from changelog
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
-
-          # When triggered by a release event, derive tag from the release tag name
-          if [ -z "$tag" ] || [ "$tag" = "refs/heads/" ]; then
-            tag="${{ github.event.release.tag_name }}"
-          fi
-
-          echo "TAG=$tag" >> "$GITHUB_ENV"
-
-          awk -v tag="$tag" '
+          awk -v tag="$TAG" '
             $0 ~ "^## " tag "([[:space:]]-|$)" { capture = 1; next }
             capture && /^## / { exit }
             capture { print }
           ' CHANGELOG.md > release-notes.md
 
           if [ ! -s release-notes.md ]; then
-            echo "Could not find a CHANGELOG entry for $tag" >&2
+            echo "Could not find a CHANGELOG entry for $TAG" >&2
             exit 1
           fi
 
@@ -55,10 +63,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="$TAG"
+          gh release upload "$TAG" main.js manifest.json styles.css --clobber
 
-          gh release upload "$tag" main.js manifest.json styles.css --clobber
-
-          gh release edit "$tag" \
-            --title="$tag" \
+          gh release edit "$TAG" \
+            --title="$TAG" \
             --notes-file=release-notes.md
