@@ -147,7 +147,8 @@ describe('PrintPlugin cssclasses behavior', () => {
             content,
             plugin.settings,
             'body { color: black; }',
-            ['invoice', 'compact-print']
+            ['invoice', 'compact-print'],
+            app
         );
     });
 
@@ -181,7 +182,8 @@ describe('PrintPlugin cssclasses behavior', () => {
             content,
             plugin.settings,
             'body { color: black; }',
-            ['invoice', 'compact-print']
+            ['invoice', 'compact-print'],
+            app
         );
     });
 
@@ -229,7 +231,9 @@ describe('PrintPlugin cssclasses behavior', () => {
             'Invoices',
             expect.any(HTMLDivElement),
             plugin.settings,
-            'body { color: black; }'
+            'body { color: black; }',
+            [],
+            app
         );
     });
 
@@ -300,7 +304,9 @@ describe('PrintPlugin cssclasses behavior', () => {
             'books',
             expect.any(HTMLDivElement),
             plugin.settings,
-            'body { color: black; }'
+            'body { color: black; }',
+            [],
+            app
         );
 
         const [, renderedContent] = mocks.openPrintModal.mock.calls[0];
@@ -340,7 +346,9 @@ describe('PrintPlugin cssclasses behavior', () => {
             'diagram',
             expect.any(HTMLDivElement),
             plugin.settings,
-            'body { color: black; }'
+            'body { color: black; }',
+            [],
+            app
         );
 
         const [, renderedContent] = mocks.openPrintModal.mock.calls[0];
@@ -413,7 +421,8 @@ describe('PrintPlugin cssclasses behavior', () => {
             content,
             plugin.settings,
             'body { color: black; }',
-            []
+            [],
+            app
         );
     });
 
@@ -454,7 +463,8 @@ describe('PrintPlugin cssclasses behavior', () => {
             content,
             plugin.settings,
             'body { color: black; }',
-            []
+            [],
+            app
         );
     });
 });

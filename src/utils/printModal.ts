@@ -1,3 +1,4 @@
+import { App, Platform } from 'obsidian';
 import { PrintPluginSettings } from '../types';
 import { Printd } from 'printd';
 import {
@@ -7,6 +8,7 @@ import {
 } from './runtimePrintStyles';
 import { openDebugPrintPreview } from './printEnvironment';
 import { syncPrintableCloneState } from './syncPrintableClone';
+import { openAndroidPrintFallback } from './androidShareFallback';
 
 /**
  * Generate the HTML with the content to be printed. Use Printd to print.
@@ -22,7 +24,8 @@ export async function openPrintModal(
     content: HTMLElement,
     settings: PrintPluginSettings,
     cssString: string,
-    bodyClasses: string[] = []
+    bodyClasses: string[] = [],
+    app?: App
 ): Promise<void> {
     const includeThemeStyles = !settings.normalizeStyle;
     const runtimeCss = includeThemeStyles
@@ -53,6 +56,11 @@ export async function openPrintModal(
         );
 
         openDebugPrintPreview({ html: debugContent });
+    }
+
+    if (Platform.isAndroidApp) {
+        await openAndroidPrintFallback(title, content, combinedCssString, bodyClasses, includeThemeStyles, app);
+        return;
     }
 
     const d = new Printd();
